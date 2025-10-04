@@ -709,6 +709,10 @@ class APITester:
         self.test_create_key_functionality()
         self.test_list_keys_functionality()
         self.test_encryption_decryption()
+        self.test_get_key_functionality()
+        self.test_decrypt_key_functionality()
+        self.test_usage_tracking_functionality()
+        self.test_delete_key_functionality()
         
         # Authentication tests
         print("\n🔐 Authentication Protection Tests:")
