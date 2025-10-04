@@ -597,15 +597,24 @@ class APITester:
     def test_server_connectivity(self):
         """Test basic server connectivity"""
         try:
-            response = self.session.get(BASE_URL, timeout=10)
+            response = self.session.get(f"{API_BASE}/test", timeout=10)
             
             if response.status_code == 200:
-                self.log_result(
-                    "Server Connectivity", 
-                    True, 
-                    "Server is responding",
-                    f"Status: {response.status_code}"
-                )
+                data = response.json()
+                if 'message' in data:
+                    self.log_result(
+                        "Server Connectivity", 
+                        True, 
+                        "Server is responding correctly",
+                        f"Message: {data['message']}"
+                    )
+                else:
+                    self.log_result(
+                        "Server Connectivity", 
+                        False, 
+                        "Server responding but invalid format",
+                        f"Response: {data}"
+                    )
             else:
                 self.log_result(
                     "Server Connectivity", 
