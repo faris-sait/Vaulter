@@ -285,13 +285,12 @@ metadata:
 
 test_plan:
   current_focus:
-    - "POST /api/keys - Create encrypted API key"
-    - "GET /api/keys - List all keys (masked)"
-    - "GET /api/keys/:id - Get specific key with optional decryption"
-    - "DELETE /api/keys/:id - Delete key"
-    - "POST /api/usage/:id - Log usage event"
+    - "Clerk authentication and protected routes"
+    - "Dashboard with stats (total keys, recently used, tags)"
+    - "Add Key modal with form validation"
+    - "Key cards with reveal/hide functionality"
   stuck_tasks: []
-  test_all: true
+  test_all: false
   test_priority: "high_first"
 
 agent_communication:
