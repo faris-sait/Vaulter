@@ -323,6 +323,189 @@ class APITester:
         except Exception as e:
             self.log_result("Validation - Missing Fields", False, f"Request failed: {str(e)}")
     
+    def test_get_key_functionality(self):
+        """Test GET /api/test-keys/:id - Get specific key"""
+        try:
+            if not self.created_key_id:
+                # Create a key first
+                response = self.session.post(
+                    f"{API_BASE}/test-keys",
+                    json={
+                        "name": "Get Test Key",
+                        "apiKey": "sk-gettest123456789abcdef123456789abcdef",
+                        "tags": ["test", "get"]
+                    },
+                    timeout=10
+                )
+                if response.status_code == 201:
+                    self.created_key_id = response.json()['id']
+            
+            if self.created_key_id:
+                # Test getting key without decryption
+                response = self.session.get(f"{API_BASE}/test-keys/{self.created_key_id}", timeout=10)
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    if 'id' in data and 'masked_key' in data and 'decrypted_key' not in data:
+                        self.log_result(
+                            "Get Key - Basic", 
+                            True, 
+                            "Successfully retrieved key without decryption",
+                            f"ID: {data['id']}, Masked: {data['masked_key']}"
+                        )
+                    else:
+                        self.log_result(
+                            "Get Key - Basic", 
+                            False, 
+                            "Invalid response structure or unexpected decryption",
+                            f"Response keys: {list(data.keys())}"
+                        )
+                else:
+                    self.log_result(
+                        "Get Key - Basic", 
+                        False, 
+                        f"Expected 200, got {response.status_code}",
+                        f"Response: {response.text[:200]}"
+                    )
+            else:
+                self.log_result("Get Key - Basic", False, "No key ID available for testing")
+                
+        except Exception as e:
+            self.log_result("Get Key - Basic", False, f"Request failed: {str(e)}")
+    
+    def test_decrypt_key_functionality(self):
+        """Test GET /api/test-keys/:id?decrypt=true - Get decrypted key"""
+        try:
+            if self.created_key_id:
+                # Test getting key with decryption
+                response = self.session.get(f"{API_BASE}/test-keys/{self.created_key_id}?decrypt=true", timeout=10)
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    if 'decrypted_key' in data and data['decrypted_key'].startswith('sk-'):
+                        self.log_result(
+                            "Decrypt Key", 
+                            True, 
+                            "Successfully decrypted key",
+                            f"Decrypted key starts with: {data['decrypted_key'][:10]}..."
+                        )
+                    else:
+                        self.log_result(
+                            "Decrypt Key", 
+                            False, 
+                            "Decrypted key not found or invalid format",
+                            f"Response: {data}"
+                        )
+                else:
+                    self.log_result(
+                        "Decrypt Key", 
+                        False, 
+                        f"Expected 200, got {response.status_code}",
+                        f"Response: {response.text[:200]}"
+                    )
+            else:
+                self.log_result("Decrypt Key", False, "No key ID available for testing")
+                
+        except Exception as e:
+            self.log_result("Decrypt Key", False, f"Request failed: {str(e)}")
+    
+    def test_usage_tracking_functionality(self):
+        """Test POST /api/test-usage/:id - Log usage event"""
+        try:
+            if self.created_key_id:
+                # Test usage tracking
+                response = self.session.post(f"{API_BASE}/test-usage/{self.created_key_id}", timeout=10)
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    if data.get('success'):
+                        # Verify usage was tracked by getting the key
+                        get_response = self.session.get(f"{API_BASE}/test-keys/{self.created_key_id}", timeout=10)
+                        if get_response.status_code == 200:
+                            key_data = get_response.json()
+                            if key_data.get('usage_count', 0) > 0:
+                                self.log_result(
+                                    "Usage Tracking", 
+                                    True, 
+                                    f"Successfully tracked usage (count: {key_data['usage_count']})",
+                                    f"Last used: {key_data.get('last_used', 'N/A')}"
+                                )
+                            else:
+                                self.log_result(
+                                    "Usage Tracking", 
+                                    False, 
+                                    "Usage count not incremented",
+                                    f"Usage count: {key_data.get('usage_count', 0)}"
+                                )
+                        else:
+                            self.log_result("Usage Tracking", False, "Could not verify usage tracking")
+                    else:
+                        self.log_result(
+                            "Usage Tracking", 
+                            False, 
+                            "Usage tracking did not return success",
+                            f"Response: {data}"
+                        )
+                else:
+                    self.log_result(
+                        "Usage Tracking", 
+                        False, 
+                        f"Expected 200, got {response.status_code}",
+                        f"Response: {response.text[:200]}"
+                    )
+            else:
+                self.log_result("Usage Tracking", False, "No key ID available for testing")
+                
+        except Exception as e:
+            self.log_result("Usage Tracking", False, f"Request failed: {str(e)}")
+    
+    def test_delete_key_functionality(self):
+        """Test DELETE /api/test-keys/:id - Delete key"""
+        try:
+            if self.created_key_id:
+                # Test deleting key
+                response = self.session.delete(f"{API_BASE}/test-keys/{self.created_key_id}", timeout=10)
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    if data.get('success'):
+                        # Verify key was deleted by trying to get it
+                        get_response = self.session.get(f"{API_BASE}/test-keys/{self.created_key_id}", timeout=10)
+                        if get_response.status_code == 404:
+                            self.log_result(
+                                "Delete Key", 
+                                True, 
+                                "Successfully deleted key",
+                                f"Key ID: {self.created_key_id}"
+                            )
+                            self.created_key_id = None  # Clear for cleanup
+                        else:
+                            self.log_result(
+                                "Delete Key", 
+                                False, 
+                                "Key still exists after deletion",
+                                f"Get response: {get_response.status_code}"
+                            )
+                    else:
+                        self.log_result(
+                            "Delete Key", 
+                            False, 
+                            "Delete did not return success",
+                            f"Response: {data}"
+                        )
+                else:
+                    self.log_result(
+                        "Delete Key", 
+                        False, 
+                        f"Expected 200, got {response.status_code}",
+                        f"Response: {response.text[:200]}"
+                    )
+            else:
+                self.log_result("Delete Key", False, "No key ID available for testing")
+                
+        except Exception as e:
+            self.log_result("Delete Key", False, f"Request failed: {str(e)}")
+    
     def test_encryption_decryption(self):
         """Test encryption and decryption functionality"""
         try:
@@ -354,8 +537,9 @@ class APITester:
                             f"Original length: {len(test_key)}, Encrypted length: {len(created_key['encrypted_key'])}, Mask: {created_key['masked_key']}"
                         )
                         
-                        # Store for cleanup
-                        self.created_key_id = key_id
+                        # Store for other tests
+                        if not self.created_key_id:
+                            self.created_key_id = key_id
                     else:
                         self.log_result(
                             "Encryption/Decryption", 
