@@ -25,7 +25,8 @@ def load_env():
     return env_vars
 
 env = load_env()
-BASE_URL = env.get('NEXT_PUBLIC_BASE_URL', 'http://localhost:3000')
+# Use localhost for internal testing since external URL may not be accessible
+BASE_URL = 'http://localhost:3000'
 API_BASE = f"{BASE_URL}/api"
 
 print(f"🔧 Testing API at: {API_BASE}")
