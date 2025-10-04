@@ -520,8 +520,14 @@ class APITester:
         self.test_encryption_key_validation()
         self.test_supabase_config()
         
+        # Functionality tests
+        print("\n🔧 Core Functionality Tests:")
+        self.test_create_key_functionality()
+        self.test_list_keys_functionality()
+        self.test_encryption_decryption()
+        
         # Authentication tests
-        print("\n🔐 Authentication Tests:")
+        print("\n🔐 Authentication Protection Tests:")
         self.test_create_key_without_auth()
         self.test_list_keys_without_auth()
         self.test_get_key_without_auth()
@@ -530,6 +536,7 @@ class APITester:
         
         # Error handling tests
         print("\n🚨 Error Handling Tests:")
+        self.test_validation_errors()
         self.test_invalid_endpoints()
         self.test_malformed_requests()
         
