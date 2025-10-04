@@ -286,24 +286,118 @@ class APITester:
         except Exception as e:
             self.log_result("Invalid Endpoint", False, f"Request failed: {str(e)}")
     
+    def test_validation_errors(self):
+        """Test validation errors with test endpoints"""
+        try:
+            # Test POST with missing required fields
+            response = self.session.post(
+                f"{API_BASE}/test-keys",
+                json={"name": "Test Key"},  # Missing apiKey
+                timeout=10
+            )
+            
+            if response.status_code == 400:
+                data = response.json()
+                if 'error' in data and 'required' in data['error'].lower():
+                    self.log_result(
+                        "Validation - Missing Fields", 
+                        True, 
+                        "Correctly validates required fields",
+                        f"Error: {data['error']}"
+                    )
+                else:
+                    self.log_result(
+                        "Validation - Missing Fields", 
+                        False, 
+                        "Error message doesn't indicate missing required fields",
+                        f"Response: {data}"
+                    )
+            else:
+                self.log_result(
+                    "Validation - Missing Fields", 
+                    False, 
+                    f"Expected 400, got {response.status_code}",
+                    f"Response: {response.text[:200]}"
+                )
+                
+        except Exception as e:
+            self.log_result("Validation - Missing Fields", False, f"Request failed: {str(e)}")
+    
+    def test_encryption_decryption(self):
+        """Test encryption and decryption functionality"""
+        try:
+            # First create a key
+            test_key = "sk-test123456789abcdef123456789abcdef123456789abcdef"
+            response = self.session.post(
+                f"{API_BASE}/test-keys",
+                json={
+                    "name": "Encryption Test Key",
+                    "apiKey": test_key,
+                    "tags": ["test", "encryption"]
+                },
+                timeout=10
+            )
+            
+            if response.status_code == 201:
+                created_key = response.json()
+                key_id = created_key['id']
+                
+                # Verify the key is encrypted (encrypted_key should be different from original)
+                if created_key['encrypted_key'] != test_key and len(created_key['encrypted_key']) > 0:
+                    # Verify masking
+                    expected_mask = f"{test_key[:4]}...{test_key[-4:]}"
+                    if created_key['masked_key'] == expected_mask:
+                        self.log_result(
+                            "Encryption/Decryption", 
+                            True, 
+                            "Key properly encrypted and masked",
+                            f"Original length: {len(test_key)}, Encrypted length: {len(created_key['encrypted_key'])}, Mask: {created_key['masked_key']}"
+                        )
+                        
+                        # Store for cleanup
+                        self.created_key_id = key_id
+                    else:
+                        self.log_result(
+                            "Encryption/Decryption", 
+                            False, 
+                            f"Key masking incorrect. Expected: {expected_mask}, Got: {created_key['masked_key']}"
+                        )
+                else:
+                    self.log_result(
+                        "Encryption/Decryption", 
+                        False, 
+                        "Key doesn't appear to be encrypted",
+                        f"Original: {test_key[:10]}..., Encrypted: {created_key['encrypted_key'][:10]}..."
+                    )
+            else:
+                self.log_result(
+                    "Encryption/Decryption", 
+                    False, 
+                    f"Failed to create test key: {response.status_code}",
+                    f"Response: {response.text[:200]}"
+                )
+                
+        except Exception as e:
+            self.log_result("Encryption/Decryption", False, f"Request failed: {str(e)}")
+    
     def test_malformed_requests(self):
         """Test malformed requests"""
         try:
-            # Test POST with invalid JSON
+            # Test POST with invalid JSON to test endpoint
             response = self.session.post(
-                f"{API_BASE}/keys",
+                f"{API_BASE}/test-keys",
                 data="invalid json",
                 headers={'Content-Type': 'application/json'},
                 timeout=10
             )
             
-            # Should return 400 or 401 (auth first)
-            if response.status_code in [400, 401, 500]:
+            # Should return 400 or 500 for malformed JSON
+            if response.status_code in [400, 500]:
                 self.log_result(
                     "Malformed Request", 
                     True, 
                     f"Correctly handles malformed JSON (status: {response.status_code})",
-                    f"Response: {response.text[:200]}"
+                    f"Status: {response.status_code}"
                 )
             else:
                 self.log_result(
