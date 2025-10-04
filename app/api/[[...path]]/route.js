@@ -1,104 +1,232 @@
-import { MongoClient } from 'mongodb'
-import { v4 as uuidv4 } from 'uuid'
-import { NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js';
+import { auth } from '@clerk/nextjs/server';
+import { NextResponse } from 'next/server';
+import crypto from 'crypto';
 
-// MongoDB connection
-let client
-let db
+// Initialize Supabase client
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
 
-async function connectToMongo() {
-  if (!client) {
-    client = new MongoClient(process.env.MONGO_URL)
-    await client.connect()
-    db = client.db(process.env.DB_NAME)
-  }
-  return db
+// Encryption utilities
+const ALGORITHM = 'aes-256-gcm';
+const ENCRYPTION_KEY = Buffer.from(process.env.ENCRYPTION_KEY, 'hex');
+
+function encrypt(text) {
+  const iv = crypto.randomBytes(16);
+  const cipher = crypto.createCipheriv(ALGORITHM, ENCRYPTION_KEY, iv);
+  let encrypted = cipher.update(text, 'utf8', 'hex');
+  encrypted += cipher.final('hex');
+  const authTag = cipher.getAuthTag();
+  return `${iv.toString('hex')}:${authTag.toString('hex')}:${encrypted}`;
 }
 
-// Helper function to handle CORS
-function handleCORS(response) {
-  response.headers.set('Access-Control-Allow-Origin', process.env.CORS_ORIGINS || '*')
-  response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
-  response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization')
-  response.headers.set('Access-Control-Allow-Credentials', 'true')
-  return response
+function decrypt(encryptedText) {
+  const parts = encryptedText.split(':');
+  const iv = Buffer.from(parts[0], 'hex');
+  const authTag = Buffer.from(parts[1], 'hex');
+  const encrypted = parts[2];
+  const decipher = crypto.createDecipheriv(ALGORITHM, ENCRYPTION_KEY, iv);
+  decipher.setAuthTag(authTag);
+  let decrypted = decipher.update(encrypted, 'hex', 'utf8');
+  decrypted += decipher.final('utf8');
+  return decrypted;
 }
 
-// OPTIONS handler for CORS
-export async function OPTIONS() {
-  return handleCORS(new NextResponse(null, { status: 200 }))
+function maskKey(key) {
+  if (key.length <= 8) return '****';
+  return `${key.substring(0, 4)}...${key.substring(key.length - 4)}`;
 }
 
-// Route handler function
-async function handleRoute(request, { params }) {
-  const { path = [] } = params
-  const route = `/${path.join('/')}`
-  const method = request.method
-
+// GET /api/keys - List all keys (masked)
+// GET /api/keys/:id - Get specific key
+// GET /api/keys/:id?decrypt=true - Get decrypted key
+async function GET(request) {
   try {
-    const db = await connectToMongo()
-
-    // Root endpoint - GET /api/root (since /api/ is not accessible with catch-all)
-    if (route === '/root' && method === 'GET') {
-      return handleCORS(NextResponse.json({ message: "Hello World" }))
-    }
-    // Root endpoint - GET /api/root (since /api/ is not accessible with catch-all)
-    if (route === '/' && method === 'GET') {
-      return handleCORS(NextResponse.json({ message: "Hello World" }))
+    const { userId } = await auth();
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Status endpoints - POST /api/status
-    if (route === '/status' && method === 'POST') {
-      const body = await request.json()
-      
-      if (!body.client_name) {
-        return handleCORS(NextResponse.json(
-          { error: "client_name is required" }, 
-          { status: 400 }
-        ))
+    const { pathname, searchParams } = new URL(request.url);
+    const pathParts = pathname.split('/').filter(Boolean);
+    
+    // GET /api/keys/:id
+    if (pathParts.length === 3 && pathParts[0] === 'api' && pathParts[1] === 'keys') {
+      const keyId = pathParts[2];
+      const shouldDecrypt = searchParams.get('decrypt') === 'true';
+
+      const { data, error } = await supabase
+        .from('api_keys')
+        .select('*')
+        .eq('id', keyId)
+        .eq('user_id', userId)
+        .single();
+
+      if (error || !data) {
+        return NextResponse.json({ error: 'Key not found' }, { status: 404 });
       }
 
-      const statusObj = {
-        id: uuidv4(),
-        client_name: body.client_name,
-        timestamp: new Date()
+      if (shouldDecrypt) {
+        try {
+          const decryptedKey = decrypt(data.encrypted_key);
+          return NextResponse.json({ ...data, decrypted_key: decryptedKey });
+        } catch (err) {
+          return NextResponse.json({ error: 'Decryption failed' }, { status: 500 });
+        }
       }
 
-      await db.collection('status_checks').insertOne(statusObj)
-      return handleCORS(NextResponse.json(statusObj))
+      return NextResponse.json(data);
     }
 
-    // Status endpoints - GET /api/status
-    if (route === '/status' && method === 'GET') {
-      const statusChecks = await db.collection('status_checks')
-        .find({})
-        .limit(1000)
-        .toArray()
+    // GET /api/keys - List all keys
+    if (pathParts.length === 2 && pathParts[0] === 'api' && pathParts[1] === 'keys') {
+      const { data, error } = await supabase
+        .from('api_keys')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
 
-      // Remove MongoDB's _id field from response
-      const cleanedStatusChecks = statusChecks.map(({ _id, ...rest }) => rest)
-      
-      return handleCORS(NextResponse.json(cleanedStatusChecks))
+      if (error) {
+        return NextResponse.json({ error: error.message }, { status: 500 });
+      }
+
+      return NextResponse.json({ keys: data || [] });
     }
 
-    // Route not found
-    return handleCORS(NextResponse.json(
-      { error: `Route ${route} not found` }, 
-      { status: 404 }
-    ))
-
+    return NextResponse.json({ error: 'Not found' }, { status: 404 });
   } catch (error) {
-    console.error('API Error:', error)
-    return handleCORS(NextResponse.json(
-      { error: "Internal server error" }, 
-      { status: 500 }
-    ))
+    console.error('GET Error:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
 
-// Export all HTTP methods
-export const GET = handleRoute
-export const POST = handleRoute
-export const PUT = handleRoute
-export const DELETE = handleRoute
-export const PATCH = handleRoute
+// POST /api/keys - Create new encrypted key
+// POST /api/usage/:id - Log usage event
+async function POST(request) {
+  try {
+    const { userId } = await auth();
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { pathname } = new URL(request.url);
+    const pathParts = pathname.split('/').filter(Boolean);
+
+    // POST /api/usage/:id - Log usage
+    if (pathParts.length === 3 && pathParts[0] === 'api' && pathParts[1] === 'usage') {
+      const keyId = pathParts[2];
+
+      const { error } = await supabase
+        .from('api_keys')
+        .update({
+          last_used: new Date().toISOString(),
+          usage_count: supabase.rpc('increment_usage', { key_id: keyId })
+        })
+        .eq('id', keyId)
+        .eq('user_id', userId);
+
+      // If RPC doesn't exist, update manually
+      const { data: currentKey } = await supabase
+        .from('api_keys')
+        .select('usage_count')
+        .eq('id', keyId)
+        .eq('user_id', userId)
+        .single();
+
+      if (currentKey) {
+        await supabase
+          .from('api_keys')
+          .update({
+            last_used: new Date().toISOString(),
+            usage_count: (currentKey.usage_count || 0) + 1
+          })
+          .eq('id', keyId)
+          .eq('user_id', userId);
+      }
+
+      return NextResponse.json({ success: true });
+    }
+
+    // POST /api/keys - Create new key
+    if (pathParts.length === 2 && pathParts[0] === 'api' && pathParts[1] === 'keys') {
+      const body = await request.json();
+      const { name, apiKey, tags } = body;
+
+      if (!name || !apiKey) {
+        return NextResponse.json(
+          { error: 'Name and API key are required' },
+          { status: 400 }
+        );
+      }
+
+      // Encrypt the key
+      const encryptedKey = encrypt(apiKey);
+      const maskedKey = maskKey(apiKey);
+
+      const { data, error } = await supabase
+        .from('api_keys')
+        .insert({
+          user_id: userId,
+          name,
+          encrypted_key: encryptedKey,
+          masked_key: maskedKey,
+          tags: tags || [],
+          created_at: new Date().toISOString(),
+          last_used: null,
+          usage_count: 0
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Supabase insert error:', error);
+        return NextResponse.json({ error: error.message }, { status: 500 });
+      }
+
+      return NextResponse.json(data, { status: 201 });
+    }
+
+    return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  } catch (error) {
+    console.error('POST Error:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
+// DELETE /api/keys/:id - Delete key
+async function DELETE(request) {
+  try {
+    const { userId } = await auth();
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { pathname } = new URL(request.url);
+    const pathParts = pathname.split('/').filter(Boolean);
+
+    if (pathParts.length === 3 && pathParts[0] === 'api' && pathParts[1] === 'keys') {
+      const keyId = pathParts[2];
+
+      const { error } = await supabase
+        .from('api_keys')
+        .delete()
+        .eq('id', keyId)
+        .eq('user_id', userId);
+
+      if (error) {
+        return NextResponse.json({ error: error.message }, { status: 500 });
+      }
+
+      return NextResponse.json({ success: true });
+    }
+
+    return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  } catch (error) {
+    console.error('DELETE Error:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
+export { GET, POST, DELETE };
