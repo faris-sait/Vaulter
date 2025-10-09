@@ -1,7 +1,7 @@
 import fetch from 'node-fetch';
 
-const SUPABASE_URL = 'https://njusnjxpgkfapkaarsso.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5qdXNuanhwZ2tmYXBrYWFyc3NvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1OTU2MzE5MywiZXhwIjoyMDc1MTM5MTkzfQ.mrdNxYi5Ko4op-R8yOQTeUk4SHeyzbt9Oa9DP327g2M';
+const SUPABASE_URL =process.env.SUPABASE_URL; 
+const SUPABASE_KEY =  process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 async function createTable() {
   console.log('Testing Supabase connection...');
