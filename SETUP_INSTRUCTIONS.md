@@ -5,7 +5,7 @@
 The table needs to be created in your Supabase project. Follow these steps:
 
 1. Go to your Supabase Dashboard: https://supabase.com/dashboard
-2. Select your project: `njusnjxpgkfapkaarsso`
+2. Select your project:
 3. Click on **SQL Editor** in the left sidebar
 4. Click **New Query**
 5. Paste the following SQL and click **Run**:
