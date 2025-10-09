@@ -69,11 +69,11 @@ Access your application at: **Your deployment URL**
 ## 🔐 Environment Variables (Already Configured)
 
 ```
-NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_bmV4dC1wYW5nb2xpbi04Mi5jbGVyay5hY2NvdW50cy5kZXYk
-CLERK_SECRET_KEY=sk_test_***
-SUPABASE_URL=https://njusnjxpgkfapkaarsso.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=eyJ***
-ENCRYPTION_KEY=8f7d6e5c4b3a2918f7d6e5c4b3a2918f7d6e5c4b3a2918f7d6e5c4b3a2918ab
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY="Your_api_key"
+CLERK_SECRET_KEY=YOUR_CLERK_SECRET_KEY
+SUPABASE_URL=YOUR_SUPABASE_URL
+SUPABASE_SERVICE_ROLE_KEY=YOUR_ROLE_KEY
+ENCRYPTION_KEY=YOUR_ENCRYPTION_KEY
 ```
 
 ## 📚 API Endpoints
