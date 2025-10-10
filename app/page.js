@@ -127,8 +127,8 @@ export default function Dashboard() {
               <Image 
                 src="/assets/vaulter-logo.png" 
                 alt="Vaulter Logo" 
-                width={28} 
-                height={28}
+                width={64} 
+                height={64}
                 className="vaulter-logo-spin"
               />
               <h1 className="text-5xl font-bold text-white tracking-tight">Vaulter</h1>
