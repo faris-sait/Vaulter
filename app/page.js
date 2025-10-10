@@ -123,8 +123,14 @@ export default function Dashboard() {
       <div className="max-w-7xl mx-auto mb-8 w-full">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <div className="flex items-center gap-3 mb-2">
-              <Lock className="w-10 h-10 text-purple-400" />
+            <div className="flex items-center gap-2 mb-2">
+              <Image 
+                src="/assets/vaulter-logo.png" 
+                alt="Vaulter Logo" 
+                width={28} 
+                height={28}
+                className="vaulter-logo-spin"
+              />
               <h1 className="text-5xl font-bold text-white tracking-tight">Vaulter</h1>
             </div>
             <p className="text-purple-200 text-lg font-medium">Your keys. Your vault. Your control.</p>
