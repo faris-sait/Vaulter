@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useUser, UserButton } from '@clerk/nextjs';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Eye, EyeOff, Copy, Trash2, Key, Clock, Hash, Search, X } from 'lucide-react';
+import { Plus, Eye, EyeOff, Copy, Trash2, Key, Clock, Hash, Search, X, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -117,13 +117,16 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-8 flex flex-col">
       {/* Header */}
-      <div className="max-w-7xl mx-auto mb-8">
+      <div className="max-w-7xl mx-auto mb-8 w-full">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-4xl font-bold text-white mb-2">API Key Manager</h1>
-            <p className="text-purple-200">Securely manage your API keys with AES-256 encryption</p>
+            <div className="flex items-center gap-3 mb-2">
+              <Lock className="w-10 h-10 text-purple-400" />
+              <h1 className="text-5xl font-bold text-white tracking-tight">Vaulter</h1>
+            </div>
+            <p className="text-purple-200 text-lg font-medium">Your keys. Your vault. Your control.</p>
           </div>
           <UserButton afterSignOutUrl="/" />
         </div>
@@ -196,7 +199,7 @@ export default function Dashboard() {
             className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white"
           >
             <Plus className="w-5 h-5 mr-2" />
-            Add Key
+            Add to Vaulter
           </Button>
         </div>
 
@@ -205,8 +208,9 @@ export default function Dashboard() {
           <div className="text-center text-white py-12">Loading keys...</div>
         ) : filteredKeys.length === 0 ? (
           <div className="text-center py-12">
-            <Key className="w-16 h-16 text-purple-400 mx-auto mb-4" />
-            <p className="text-purple-200 text-lg">No API keys yet. Add your first one!</p>
+            <Lock className="w-16 h-16 text-purple-400 mx-auto mb-4" />
+            <p className="text-purple-200 text-lg">No API keys in your vault yet.</p>
+            <p className="text-purple-300 text-sm mt-2">Add your first key to get started!</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -240,7 +244,7 @@ export default function Dashboard() {
                     {/* Key Display */}
                     <div className="bg-black/30 rounded-lg p-3 mb-4 font-mono text-sm">
                       <div className="flex items-center justify-between">
-                        <span className="text-purple-300">
+                        <span className="text-purple-300 truncate">
                           {revealedKeys[key.id] || key.masked_key}
                         </span>
                         <div className="flex gap-2">
@@ -249,6 +253,7 @@ export default function Dashboard() {
                             size="icon"
                             onClick={() => toggleReveal(key.id)}
                             className="text-purple-400 hover:text-purple-300"
+                            title={revealedKeys[key.id] ? "Hide key" : "Reveal key"}
                           >
                             {revealedKeys[key.id] ? (
                               <EyeOff className="w-4 h-4" />
@@ -261,6 +266,7 @@ export default function Dashboard() {
                             size="icon"
                             onClick={() => copyToClipboard(revealedKeys[key.id] || key.masked_key)}
                             className="text-purple-400 hover:text-purple-300"
+                            title="Copy to clipboard"
                           >
                             <Copy className="w-4 h-4" />
                           </Button>
@@ -297,6 +303,17 @@ export default function Dashboard() {
         )}
       </div>
 
+      {/* Footer */}
+      <div className="max-w-7xl mx-auto mt-auto pt-12 w-full">
+        <div className="text-center">
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/5 backdrop-blur-sm rounded-full border border-white/10">
+            <Lock className="w-4 h-4 text-purple-400" />
+            <span className="text-purple-200 text-sm font-medium">Secured by Vaulter</span>
+            <span className="text-purple-400 text-xs">AES-256</span>
+          </div>
+        </div>
+      </div>
+
       {/* Add Key Modal */}
       <AnimatePresence>
         {showModal && (
@@ -315,7 +332,10 @@ export default function Dashboard() {
               className="bg-slate-900 rounded-2xl p-8 max-w-md w-full border border-purple-500/30"
             >
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-white">Add New API Key</h2>
+                <div>
+                  <h2 className="text-2xl font-bold text-white">Add to Vaulter</h2>
+                  <p className="text-sm text-purple-300 mt-1">Securely store a new API key</p>
+                </div>
                 <Button
                   variant="ghost"
                   size="icon"
