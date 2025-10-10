@@ -7,6 +7,7 @@ import { Plus, Eye, EyeOff, Copy, Trash2, Key, Clock, Hash, Search, X, Lock } fr
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
+import Image from 'next/image';
 
 export default function Dashboard() {
   const { user, isLoaded } = useUser();
