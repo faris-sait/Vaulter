@@ -123,12 +123,12 @@ export default function Dashboard() {
       <div className="max-w-7xl mx-auto mb-8 w-full">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <div className="flex items-center gap-2 mb-2">
+            <div className="flex items-center gap-1 mb-2">
               <Image 
-                src="/assets/vaulter-logo.png" 
+                src="/assets/vaulter-logo.svg" 
                 alt="Vaulter Logo" 
-                width={64} 
-                height={64}
+                width={100} 
+                height={100}
                 className="vaulter-logo-spin"
               />
               <h1 className="text-5xl font-bold text-white tracking-tight">Vaulter</h1>
