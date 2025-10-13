@@ -1,9 +1,0 @@
-SUBMISSION OVERVIEW
-The following documents have been submitted as part of the Vaulter Project report:
-•	Link to the published website
-•	All prompts used to generate code and results
-•	Performance and evaluation report
-•	Tech stack used
-•	1 minute demo video
-PROJECT GOAL
-Vaulter wants to give developers a safe and easy-to-use platform to handle, protect, and keep track of API keys. The main idea is to reduce the dangers of keeping keys stored by hand, by using strong AES-256 encryption, secure JWT authentication, and a clean, modern glassmorphic dashboard, making everything both safe and efficient.
