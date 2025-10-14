@@ -1,4 +1,4 @@
-# API Key Manager - Setup Instructions
+# Vaulter API Key Manager - Setup Instructions
 
 ## ✅ Step 1: Create Supabase Database Table
 
