@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useUser, UserButton } from '@clerk/nextjs';
+import { useUser, UserButton, useClerk } from '@clerk/nextjs';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Eye, EyeOff, Copy, Trash2, Key, Clock, Hash, Search, X, Lock } from 'lucide-react';
+import { Plus, Eye, EyeOff, Copy, Trash2, Key, Clock, Hash, Search, X, Lock, LogIn } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -11,11 +11,14 @@ import Image from 'next/image';
 
 export default function Dashboard() {
   const { user, isLoaded } = useUser();
+  const { openSignIn } = useClerk();
   const [keys, setKeys] = useState([]);
   const [showModal, setShowModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [keyToDelete, setKeyToDelete] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [revealedKeys, setRevealedKeys] = useState({});
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -25,10 +28,11 @@ export default function Dashboard() {
   });
 
   useEffect(() => {
-    if (isLoaded && user) {
+    if (user) {
+      setLoading(true);
       fetchKeys();
     }
-  }, [isLoaded, user]);
+  }, [user]);
 
   const fetchKeys = async () => {
     try {
@@ -65,14 +69,22 @@ export default function Dashboard() {
     }
   };
 
-  const deleteKey = async (id) => {
-    if (!confirm('Are you sure you want to delete this key?')) return;
-    
+  const handleDeleteClick = (key) => {
+    setKeyToDelete(key);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!keyToDelete) return;
+
     try {
-      await fetch(`/api/keys/${id}`, { method: 'DELETE' });
+      await fetch(`/api/keys/${keyToDelete.id}`, { method: 'DELETE' });
       fetchKeys();
     } catch (error) {
       console.error('Error deleting key:', error);
+    } finally {
+      setShowDeleteModal(false);
+      setKeyToDelete(null);
     }
   };
 
@@ -86,7 +98,7 @@ export default function Dashboard() {
       const res = await fetch(`/api/keys/${id}?decrypt=true`);
       const data = await res.json();
       setRevealedKeys(prev => ({ ...prev, [id]: data.decrypted_key }));
-      
+
       // Log usage
       await fetch(`/api/usage/${id}`, { method: 'POST' });
     } catch (error) {
@@ -109,14 +121,6 @@ export default function Dashboard() {
     totalTags: [...new Set(keys.flatMap(k => k.tags || []))].length
   };
 
-  if (!isLoaded) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
-        <div className="text-white text-xl">Loading...</div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-8 flex flex-col">
       {/* Header */}
@@ -124,10 +128,10 @@ export default function Dashboard() {
         <div className="flex items-center justify-between mb-8">
           <div>
             <div className="flex items-center gap-1 mb-2">
-              <Image 
-                src="/assets/vaulter-logo.svg" 
-                alt="Vaulter Logo" 
-                width={100} 
+              <Image
+                src="/assets/vaulter-logo.svg"
+                alt="Vaulter Logo"
+                width={100}
                 height={100}
                 className="vaulter-logo-spin"
               />
@@ -135,7 +139,7 @@ export default function Dashboard() {
             </div>
             <p className="text-purple-200 text-lg font-medium">Your keys. Your vault. Your control.</p>
           </div>
-          <UserButton afterSignOutUrl="/" />
+          {user && <UserButton afterSignOutUrl="/" />}
         </div>
 
         {/* Stats Cards */}
@@ -201,25 +205,50 @@ export default function Dashboard() {
               className="pl-10 bg-white/10 backdrop-blur-lg border-white/20 text-white placeholder:text-purple-300"
             />
           </div>
-          <Button
-            onClick={() => setShowModal(true)}
-            className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white"
-          >
-            <Plus className="w-5 h-5 mr-2" />
-            Add to Vaulter
-          </Button>
+
+          {/* Show different button based on auth state */}
+          {isLoaded && !user ? (
+            <Button
+              onClick={() => openSignIn()}
+              className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white"
+            >
+              <LogIn className="w-5 h-5 mr-2" />
+              Sign in to add API keys
+            </Button>
+          ) : (
+            <Button
+              onClick={() => setShowModal(true)}
+              className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white"
+            >
+              <Plus className="w-5 h-5 mr-2" />
+              Add to Vaulter
+            </Button>
+          )}
         </div>
 
-        {/* Keys Grid */}
-        {loading ? (
+        {/* Content Area */}
+        {!isLoaded ? (
+          // Loading state while Clerk initializes
+          <div className="text-center text-white py-12">Loading...</div>
+        ) : !user ? (
+          // Not signed in - show welcome message
+          <div className="text-center py-12">
+            <Lock className="w-16 h-16 text-purple-400 mx-auto mb-4" />
+            <p className="text-purple-200 text-lg">Welcome to Vaulter</p>
+            <p className="text-purple-300 text-sm mt-2">Sign in to securely store and manage your API keys</p>
+          </div>
+        ) : loading ? (
+          // Signed in but loading keys
           <div className="text-center text-white py-12">Loading keys...</div>
         ) : filteredKeys.length === 0 ? (
+          // Signed in but no keys
           <div className="text-center py-12">
             <Lock className="w-16 h-16 text-purple-400 mx-auto mb-4" />
             <p className="text-purple-200 text-lg">No API keys in your vault yet.</p>
             <p className="text-purple-300 text-sm mt-2">Add your first key to get started!</p>
           </div>
         ) : (
+          // Signed in with keys
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <AnimatePresence>
               {filteredKeys.map((key, index) => (
@@ -241,7 +270,7 @@ export default function Dashboard() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => deleteKey(key.id)}
+                        onClick={() => handleDeleteClick(key)}
                         className="text-red-400 hover:text-red-300 hover:bg-red-400/20"
                       >
                         <Trash2 className="w-5 h-5" />
@@ -316,7 +345,6 @@ export default function Dashboard() {
           <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/5 backdrop-blur-sm rounded-full border border-white/10">
             <Lock className="w-4 h-4 text-purple-400" />
             <span className="text-purple-200 text-sm font-medium">Secured by Vaulter</span>
-            <span className="text-purple-400 text-xs">AES-256</span>
           </div>
         </div>
       </div>
@@ -409,6 +437,69 @@ export default function Dashboard() {
                   </Button>
                 </div>
               </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Delete Confirmation Modal */}
+      <AnimatePresence>
+        {showDeleteModal && keyToDelete && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+            onClick={() => setShowDeleteModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-slate-900 rounded-2xl p-8 max-w-md w-full border border-red-500/30"
+            >
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h2 className="text-2xl font-bold text-white">Delete Key</h2>
+                  <p className="text-sm text-purple-300 mt-1">This action cannot be undone</p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setShowDeleteModal(false)}
+                  className="text-purple-400 hover:text-purple-300"
+                >
+                  <X className="w-5 h-5" />
+                </Button>
+              </div>
+
+              <div className="mb-6">
+                <p className="text-purple-200">
+                  Are you sure you want to delete <span className="text-white font-semibold">{keyToDelete.name}</span>?
+                </p>
+                <div className="mt-4 p-3 bg-black/30 rounded-lg">
+                  <p className="text-purple-300 text-sm font-mono truncate">{keyToDelete.masked_key}</p>
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowDeleteModal(false)}
+                  className="flex-1 border-purple-500/30 text-purple-300 hover:bg-purple-500/20"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={confirmDelete}
+                  className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Delete Key
+                </Button>
+              </div>
             </motion.div>
           </motion.div>
         )}
