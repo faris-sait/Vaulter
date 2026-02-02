@@ -149,6 +149,87 @@ async function POST(request) {
       return NextResponse.json({ success: true });
     }
 
+    // POST /api/keys/bulk - Bulk import keys
+    if (pathParts.length === 3 && pathParts[0] === 'api' && pathParts[1] === 'keys' && pathParts[2] === 'bulk') {
+      const body = await request.json();
+      const { keys: keysToImport, overwriteKeys } = body;
+
+      if (!Array.isArray(keysToImport) || keysToImport.length === 0) {
+        return NextResponse.json(
+          { error: 'Keys array is required and must not be empty' },
+          { status: 400 }
+        );
+      }
+
+      const results = { success: [], failed: [], overwritten: [] };
+
+      // Insert all keys (delete existing only after successful encryption/validation)
+      for (const keyData of keysToImport) {
+        const { name, apiKey } = keyData;
+
+        if (!name || !apiKey || typeof name !== 'string' || typeof apiKey !== 'string') {
+          results.failed.push({ name: name || 'Unknown', error: 'Missing or invalid name/API key' });
+          continue;
+        }
+
+        const trimmedName = name.trim();
+        if (!trimmedName || trimmedName.length > 255) {
+          results.failed.push({ name, error: 'Invalid name length (must be 1-255 characters)' });
+          continue;
+        }
+
+        try {
+          const encryptedKey = encrypt(apiKey);
+          const maskedKey = maskKey(apiKey);
+
+          const shouldOverwrite = overwriteKeys && overwriteKeys.includes(trimmedName);
+
+          // If overwriting, delete existing key first (only after encryption succeeds)
+          if (shouldOverwrite) {
+            const { error: deleteError } = await supabase
+              .from('api_keys')
+              .delete()
+              .eq('user_id', userId)
+              .eq('name', trimmedName);
+
+            if (deleteError) {
+              results.failed.push({ name: trimmedName, error: `Failed to delete existing: ${deleteError.message}` });
+              continue;
+            }
+          }
+
+          const { data, error } = await supabase
+            .from('api_keys')
+            .insert({
+              user_id: userId,
+              name: trimmedName,
+              encrypted_key: encryptedKey,
+              masked_key: maskedKey,
+              tags: [],
+              created_at: new Date().toISOString(),
+              last_used: null,
+              usage_count: 0
+            })
+            .select()
+            .single();
+
+          if (error) {
+            results.failed.push({ name: trimmedName, error: error.message });
+          } else {
+            if (shouldOverwrite) {
+              results.overwritten.push(data);
+            } else {
+              results.success.push(data);
+            }
+          }
+        } catch (err) {
+          results.failed.push({ name: trimmedName, error: `Encryption failed: ${err.message}` });
+        }
+      }
+
+      return NextResponse.json(results, { status: 201 });
+    }
+
     // POST /api/keys - Create new key
     if (pathParts.length === 2 && pathParts[0] === 'api' && pathParts[1] === 'keys') {
       const body = await request.json();

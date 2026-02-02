@@ -1,4 +1,5 @@
 import { ClerkProvider } from '@clerk/nextjs';
+import { Toaster } from '@/components/ui/toaster';
 import './globals.css';
 
 export const metadata = {
@@ -58,7 +59,10 @@ export default function RootLayout({ children }) {
       }}
     >
       <html lang="en">
-        <body>{children}</body>
+        <body>
+          {children}
+          <Toaster />
+        </body>
       </html>
     </ClerkProvider>
   );
