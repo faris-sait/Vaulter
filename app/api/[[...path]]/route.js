@@ -9,6 +9,40 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
+// Resolve user from Clerk session or CLI Bearer token
+async function resolveUser(request) {
+  // Try Clerk session first
+  try {
+    const { userId } = await auth();
+    if (userId) return { userId };
+  } catch {}
+
+  // Fall back to CLI token
+  const authHeader = request.headers.get('authorization');
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.slice(7);
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+
+    const { data, error } = await supabase
+      .from('cli_tokens')
+      .select('user_id')
+      .eq('token_hash', tokenHash)
+      .single();
+
+    if (data && !error) {
+      // Update last_used timestamp
+      await supabase
+        .from('cli_tokens')
+        .update({ last_used: new Date().toISOString() })
+        .eq('token_hash', tokenHash);
+
+      return { userId: data.user_id };
+    }
+  }
+
+  return { userId: null };
+}
+
 // Encryption utilities
 const ALGORITHM = 'aes-256-gcm';
 const ENCRYPTION_KEY = Buffer.from(process.env.ENCRYPTION_KEY, 'hex');
@@ -44,7 +78,7 @@ function maskKey(key) {
 // GET /api/keys/:id?decrypt=true - Get decrypted key
 async function GET(request) {
   try {
-    const { userId } = await auth();
+    const { userId } = await resolveUser(request);
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -106,7 +140,7 @@ async function GET(request) {
 // POST /api/usage/:id - Log usage event
 async function POST(request) {
   try {
-    const { userId } = await auth();
+    const { userId } = await resolveUser(request);
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -279,7 +313,7 @@ async function POST(request) {
 // DELETE /api/keys/:id - Delete key
 async function DELETE(request) {
   try {
-    const { userId } = await auth();
+    const { userId } = await resolveUser(request);
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
