@@ -2,9 +2,12 @@
 
 import { Command } from 'commander';
 import { signIn } from './commands/sign-in.js';
+import { signOut } from './commands/sign-out.js';
 import { listKeys } from './commands/ls.js';
 import { addKey } from './commands/add.js';
 import { removeKey } from './commands/remove.js';
+import { makeEnv } from './commands/make.js';
+import { saveEnv } from './commands/save.js';
 import { openWebApp } from './commands/web-app.js';
 import { showHelp } from './commands/help.js';
 import { printLogo } from './assets/logo.js';
@@ -25,6 +28,11 @@ program
   .command('sign-in')
   .description('Authenticate with Vaulter via browser')
   .action(signIn);
+
+program
+  .command('sign-out')
+  .description('Sign out and clear saved credentials')
+  .action(signOut);
 
 program
   .command('ls')
@@ -57,6 +65,29 @@ program
       process.exit(1);
     }
     await removeKey(nameOrId);
+  });
+
+program
+  .command('make [filename]')
+  .description('Generate a .env file from your vault keys')
+  .option('-o, --output <dir>', 'Output directory')
+  .action(async (filename, options) => {
+    if (!isAuthenticated()) {
+      error('Not authenticated. Run `vaulter sign-in` first.');
+      process.exit(1);
+    }
+    await makeEnv(filename, options);
+  });
+
+program
+  .command('save [filename]')
+  .description('Upload a local .env file to your vault')
+  .action(async (filename) => {
+    if (!isAuthenticated()) {
+      error('Not authenticated. Run `vaulter sign-in` first.');
+      process.exit(1);
+    }
+    await saveEnv(filename);
   });
 
 program

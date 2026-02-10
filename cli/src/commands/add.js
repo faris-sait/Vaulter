@@ -1,7 +1,7 @@
 import inquirer from 'inquirer';
 import ora from 'ora';
 import { apiFetch } from '../lib/api.js';
-import { success, error, info, purple } from '../lib/ui.js';
+import { success, error, info, purple, tip } from '../lib/ui.js';
 
 export async function addKey(name) {
   console.log('');
@@ -38,6 +38,7 @@ export async function addKey(name) {
     spinner.succeed('Key added to vault!');
     console.log('');
     success(`"${name}" has been securely stored.`);
+    tip('Run `vaulter make .env` to include this key in a .env file.');
     console.log('');
   } catch (err) {
     spinner.fail('Failed to add key');

@@ -25,3 +25,7 @@ export function info(msg) {
 export function warn(msg) {
   console.log(yellow('  ' + msg));
 }
+
+export function tip(msg) {
+  console.log(dim('  Tip: ' + msg));
+}

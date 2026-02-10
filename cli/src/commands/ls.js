@@ -2,7 +2,7 @@ import Table from 'cli-table3';
 import chalk from 'chalk';
 import ora from 'ora';
 import { apiFetch } from '../lib/api.js';
-import { purple, dim, error } from '../lib/ui.js';
+import { purple, dim, error, tip } from '../lib/ui.js';
 
 export async function listKeys() {
   const spinner = ora({ text: 'Fetching keys...', color: 'magenta' }).start();
@@ -58,6 +58,7 @@ export async function listKeys() {
     console.log(table.toString());
     console.log('');
     console.log(dim(`  ${keys.length} key(s) in your vault`));
+    tip('Run `vaulter make .env` to export keys to a .env file.');
     console.log('');
   } catch (err) {
     spinner.fail('Failed to fetch keys');
