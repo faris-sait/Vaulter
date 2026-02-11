@@ -17,6 +17,7 @@ console.log(purple4 + '   Your keys. Your vault.' + reset);
 console.log('');
 console.log(purple + '  COMMANDS' + reset);
 console.log('');
+console.log('  ' + bold + white + 'vaulter init              ' + reset + dim + 'Initialize current directory as a Vaulter project' + reset);
 console.log('  ' + bold + white + 'vaulter sign-in           ' + reset + dim + 'Authenticate with Vaulter via browser' + reset);
 console.log('  ' + bold + white + 'vaulter sign-out          ' + reset + dim + 'Sign out and clear saved credentials' + reset);
 console.log('  ' + bold + white + 'vaulter ls                ' + reset + dim + 'List all API keys in your vault' + reset);

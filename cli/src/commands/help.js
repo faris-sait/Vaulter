@@ -16,6 +16,7 @@ export async function showHelp() {
   console.log('');
 
   const commands = [
+    { name: 'init',                desc: 'Initialize current directory as a Vaulter project' },
     { name: 'sign-in',             desc: 'Authenticate with Vaulter via browser' },
     { name: 'sign-out',            desc: 'Sign out and clear saved credentials' },
     { name: 'ls',                  desc: 'List all API keys in your vault' },

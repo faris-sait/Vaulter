@@ -15,6 +15,7 @@ Vaulter is a secure API key manager with a CLI and a web dashboard. Store, encry
 - [Install](#install)
 - [Quick Start](#quick-start)
 - [CLI Commands](#cli-commands)
+  - [vaulter init](#vaulter-init)
   - [vaulter sign-in](#vaulter-sign-in)
   - [vaulter sign-out](#vaulter-sign-out)
   - [vaulter ls](#vaulter-ls)
@@ -58,25 +59,51 @@ Requires **Node.js 18+**.
 ## Quick Start
 
 ```bash
-# 1. Authenticate (opens browser)
+# 1. Initialize your project
+vaulter init
+
+# 2. Authenticate (opens browser)
 vaulter sign-in
 
-# 2. Add a key
+# 3. Add a key
 vaulter add STRIPE_SECRET_KEY
 
-# 3. List your keys
+# 4. List your keys
 vaulter ls
 
-# 4. Generate a .env file from your vault
+# 5. Generate a .env file from your vault
 vaulter make
 
-# 5. Or upload an existing .env to your vault
+# 6. Or upload an existing .env to your vault
 vaulter save .env.local
 ```
 
 ---
 
 ## CLI Commands
+
+### `vaulter init`
+
+Initialize the current directory as a Vaulter project.
+
+Creates a `.vaulter/config.json` with project metadata. If a `.gitignore` exists, `.vaulter/` is automatically added to it. No authentication required.
+
+```bash
+vaulter init
+# ? Project name: my-app
+# ✔ Initialized Vaulter project "my-app"
+# ✔ Added .vaulter/ to .gitignore
+
+# Non-interactive with a custom name
+vaulter init --yes --name my-app
+```
+
+**Options:**
+
+| Flag | Description |
+|------|-------------|
+| `-n, --name <name>` | Project name (skips prompt) |
+| `-y, --yes` | Non-interactive, use all defaults |
 
 ### `vaulter sign-in`
 

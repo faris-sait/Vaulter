@@ -8,6 +8,7 @@ import { addKey } from './commands/add.js';
 import { removeKey } from './commands/remove.js';
 import { makeEnv } from './commands/make.js';
 import { saveEnv } from './commands/save.js';
+import { initProject } from './commands/init.js';
 import { openWebApp } from './commands/web-app.js';
 import { showHelp } from './commands/help.js';
 import { printLogo } from './assets/logo.js';
@@ -88,6 +89,15 @@ program
       process.exit(1);
     }
     await saveEnv(filename);
+  });
+
+program
+  .command('init')
+  .description('Initialize current directory as a Vaulter project')
+  .option('-n, --name <name>', 'Project name')
+  .option('-y, --yes', 'Non-interactive, use all defaults')
+  .action(async (options) => {
+    await initProject(options);
   });
 
 program
