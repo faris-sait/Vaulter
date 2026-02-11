@@ -1,6 +1,6 @@
 {
   "name": "vaulter-cli",
-  "version": "0.1.3",
+  "version": "2.3.0",
   "description": "CLI tool for Vaulter - Secure API Key Manager",
   "author": "faris-sait",
   "repository": {
