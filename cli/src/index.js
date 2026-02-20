@@ -8,6 +8,7 @@ import { addKey } from './commands/add.js';
 import { removeKey } from './commands/remove.js';
 import { makeEnv } from './commands/make.js';
 import { saveEnv } from './commands/save.js';
+import { viewKeys } from './commands/view.js';
 import { initProject } from './commands/init.js';
 import { openWebApp } from './commands/web-app.js';
 import { showHelp } from './commands/help.js';
@@ -20,7 +21,7 @@ const program = new Command();
 program
   .name('vaulter')
   .description('Vaulter CLI - Secure API Key Manager')
-  .version('2.3.0')
+  .version('2.3.1')
   .action(async () => {
     await showHelp();
   });
@@ -89,6 +90,17 @@ program
       process.exit(1);
     }
     await saveEnv(filename);
+  });
+
+program
+  .command('view [key_names...]')
+  .description('Decrypt and display one or more API keys in your terminal')
+  .action(async (names) => {
+    if (!isAuthenticated()) {
+      error('Not authenticated. Run `vaulter sign-in` first.');
+      process.exit(1);
+    }
+    await viewKeys(names);
   });
 
 program

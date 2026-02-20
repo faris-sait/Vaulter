@@ -30,11 +30,18 @@ vaulter add my-openai-key
 # Remove a key
 vaulter remove my-openai-key
 
+# View decrypted values in your terminal
+vaulter view STRIPE_SECRET
+vaulter view KEY1 KEY2
+
 # Generate a .env file from your vault
 vaulter make .env
 
 # Upload a local .env file to your vault
 vaulter save .env
+
+# Initialize current directory as a Vaulter project
+vaulter init
 ```
 
 ## Commands
@@ -46,10 +53,31 @@ vaulter save .env
 | `vaulter ls` | List all API keys in your vault |
 | `vaulter add <name>` | Add a new API key to your vault |
 | `vaulter remove <name-or-id>` | Remove an API key from your vault |
+| `vaulter view [key_names...]` | Decrypt and display one or more API keys in your terminal |
 | `vaulter make [file]` | Generate a .env file from your vault keys |
 | `vaulter save [file]` | Upload a local .env file to your vault |
+| `vaulter init` | Initialize current directory as a Vaulter project |
 | `vaulter web-app` | Open the Vaulter web app in your browser |
 | `vaulter help` | Show all available commands |
+
+## Viewing Keys
+
+### `vaulter view [key_names...]`
+
+Decrypt and print key values directly to your terminal — without writing them to a file.
+
+```bash
+# Interactive: select which keys to view via checkbox
+vaulter view
+
+# View a specific key by name
+vaulter view STRIPE_SECRET
+
+# View multiple keys at once
+vaulter view STRIPE_SECRET OPENAI_API_KEY
+```
+
+Key names are matched case-insensitively. If a name doesn't match any key in your vault, a warning is printed and the rest continue. A security reminder is shown below the output table — clear your terminal when done.
 
 ## .env Support
 
@@ -79,6 +107,25 @@ vaulter save
 # Upload a specific file
 vaulter save .env.production
 ```
+
+## Project Initialization
+
+### `vaulter init`
+
+Initialize the current directory as a Vaulter project. This creates a `.vaulter/config.json` file that associates the directory with a named project, and automatically adds `.vaulter/` to your `.gitignore` if one exists.
+
+```bash
+# Interactive setup (prompts for project name)
+vaulter init
+
+# Non-interactive, use directory name as project name
+vaulter init --yes
+
+# Specify a project name directly
+vaulter init --name my-project
+```
+
+After initialization, if no `.env` is found and you're signed in, you'll be offered the option to generate one from your vault immediately.
 
 ## Authentication
 
