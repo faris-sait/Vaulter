@@ -21,6 +21,7 @@ Vaulter is a secure API key manager with a CLI and a web dashboard. Store, encry
   - [vaulter ls](#vaulter-ls)
   - [vaulter add](#vaulter-add-name)
   - [vaulter remove](#vaulter-remove-name-or-id)
+  - [vaulter view](#vaulter-view-names)
   - [vaulter make](#vaulter-make-filename)
   - [vaulter save](#vaulter-save-filename)
   - [vaulter web-app](#vaulter-web-app)
@@ -164,6 +165,47 @@ Remove an API key from your vault by name or ID.
 vaulter remove OPENAI_API_KEY
 # ✔ Key "OPENAI_API_KEY" removed from vault
 ```
+
+### `vaulter view [names...]`
+
+Decrypt and display one or more keys from your vault.
+
+Run without arguments for an interactive checkbox to select keys. Pass key names directly to skip the prompt. Each key is shown in its own labeled card so long values never overflow or wrap into adjacent columns.
+
+After the keys are displayed, an interactive list lets you copy any key to your clipboard — select a key and press Enter to copy it instantly. The menu stays open so you can copy multiple keys without re-running the command. Select **Done** to exit.
+
+```bash
+vaulter view
+# ? Select keys to view: (checkbox)
+#   ◉ STRIPE_SECRET  (sk_l...3xf4)
+#   ◉ OPENAI_KEY     (sk-p...a91b)
+#
+#   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#
+#   STRIPE_SECRET  [1/2]
+#   ────────────────────────────────────────────────────────────
+#   sk_live_abc123...
+#
+#   OPENAI_KEY  [2/2]
+#   ────────────────────────────────────────────────────────────
+#   sk-proj-abc123...
+#
+#   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#
+#   ⚠  These values are sensitive. Clear your terminal when done.
+#   💡 Tip: Select a key below to copy it to your clipboard.
+#
+# ? Copy a key to clipboard:
+#   ❯ STRIPE_SECRET   sk_live_abc123...
+#     OPENAI_KEY      sk-proj-abc123...
+#     ──────────────
+#     Done
+
+# View specific keys directly (no prompt)
+vaulter view STRIPE_SECRET OPENAI_KEY
+```
+
+> Keys are decrypted in memory only and never written to disk.
 
 ### `vaulter make [filename]`
 
@@ -334,7 +376,7 @@ vaulter sign-in
 
 | Layer | Technology |
 |-------|------------|
-| **CLI** | Node.js, Commander, Inquirer, Chalk, Ora |
+| **CLI** | Node.js, Commander, Inquirer, Chalk, Ora, Clipboardy |
 | **Frontend** | Next.js 14 (App Router), React 18, Tailwind CSS, shadcn/ui, Framer Motion |
 | **Backend** | Next.js API Routes |
 | **Database** | Supabase (PostgreSQL) |
