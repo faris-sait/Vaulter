@@ -22,6 +22,7 @@ export async function showHelp() {
     { name: 'ls',                  desc: 'List all API keys in your vault' },
     { name: 'add <name>',          desc: 'Add a new API key to your vault' },
     { name: 'remove <name-or-id>', desc: 'Remove an API key from your vault' },
+    { name: 'view [key_names...]', desc: 'Decrypt and display one or more API keys in your terminal' },
     { name: 'make [file]',         desc: 'Generate a .env file from your vault keys' },
     { name: 'save [file]',         desc: 'Upload a local .env file to your vault' },
     { name: 'web-app',             desc: 'Open the Vaulter web app in your browser' },

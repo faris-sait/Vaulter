@@ -21,7 +21,7 @@ const program = new Command();
 program
   .name('vaulter')
   .description('Vaulter CLI - Secure API Key Manager')
-  .version('2.3.1')
+  .version('2.3.2')
   .action(async () => {
     await showHelp();
   });
