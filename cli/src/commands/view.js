@@ -1,9 +1,21 @@
 import inquirer from 'inquirer';
 import ora from 'ora';
-import Table from 'cli-table3';
 import chalk from 'chalk';
+import clipboardy from 'clipboardy';
 import { apiFetch } from '../lib/api.js';
-import { purple, dim, error, warn } from '../lib/ui.js';
+import { purple, dim, error, warn, green } from '../lib/ui.js';
+
+const DIVIDER_WIDTH = 60;
+const divider = chalk.dim('─'.repeat(DIVIDER_WIDTH));
+
+function printKeyCard(name, value, index, total) {
+  const label = purple.bold(name);
+  const counter = chalk.dim(`[${index + 1}/${total}]`);
+  console.log(`  ${label}  ${counter}`);
+  console.log(`  ${divider}`);
+  console.log(`  ${chalk.hex('#a78bfa')(value)}`);
+  console.log('');
+}
 
 export async function viewKeys(names) {
   const spinner = ora({ text: 'Fetching vault keys...', color: 'magenta' }).start();
@@ -30,7 +42,6 @@ export async function viewKeys(names) {
   let selected;
 
   if (names.length === 0) {
-    // Interactive checkbox selection
     console.log('');
     const { selectedKeys } = await inquirer.prompt([
       {
@@ -54,7 +65,6 @@ export async function viewKeys(names) {
 
     selected = selectedKeys;
   } else {
-    // Match provided names case-insensitively
     selected = [];
     for (const name of names) {
       const match = keys.find((k) => k.name.toLowerCase() === name.toLowerCase());
@@ -78,35 +88,69 @@ export async function viewKeys(names) {
   for (const key of selected) {
     try {
       const data = await apiFetch(`/api/keys/${key.id}?decrypt=true`);
-      rows.push([chalk.white(key.name), chalk.hex('#a78bfa')(data.decrypted_key)]);
+      rows.push({ name: key.name, value: data.decrypted_key });
     } catch (err) {
-      rows.push([chalk.white(key.name), dim('(failed to decrypt)')]);
+      rows.push({ name: key.name, value: null });
     }
   }
 
   decryptSpinner.stop();
 
-  const table = new Table({
-    head: [purple.bold('Name'), purple.bold('Decrypted Value')],
-    style: {
-      head: [],
-      border: ['dim'],
-    },
-    chars: {
-      'top': '─', 'top-mid': '┬', 'top-left': '┌', 'top-right': '┐',
-      'bottom': '─', 'bottom-mid': '┴', 'bottom-left': '└', 'bottom-right': '┘',
-      'left': '│', 'left-mid': '├', 'mid': '─', 'mid-mid': '┼',
-      'right': '│', 'right-mid': '┤', 'middle': '│',
-    },
-  });
+  // Display cards
+  console.log('');
+  console.log(`  ${chalk.dim('━'.repeat(DIVIDER_WIDTH))}`);
+  console.log('');
 
-  for (const row of rows) {
-    table.push(row);
+  for (let i = 0; i < rows.length; i++) {
+    const { name, value } = rows[i];
+    if (value === null) {
+      printKeyCard(name, chalk.dim('(failed to decrypt)'), i, rows.length);
+    } else {
+      printKeyCard(name, value, i, rows.length);
+    }
   }
 
+  console.log(`  ${chalk.dim('━'.repeat(DIVIDER_WIDTH))}`);
   console.log('');
-  console.log(table.toString());
+  console.log(`  ${chalk.yellow('⚠')}  ${chalk.yellow.bold('These values are sensitive.')} ${chalk.dim('Clear your terminal when done.')}`);
+  console.log(`  ${chalk.dim('💡 Tip: Select a key below to copy it to your clipboard.')}`);
   console.log('');
-  console.log(dim('  These values are sensitive. Clear your terminal when done.'));
+
+  // Clipboard copy loop
+  const copyableRows = rows.filter((r) => r.value !== null);
+  if (copyableRows.length === 0) return;
+
+  let copying = true;
+  while (copying) {
+    const { toCopy } = await inquirer.prompt([
+      {
+        type: 'list',
+        name: 'toCopy',
+        message: purple('Copy a key to clipboard:'),
+        choices: [
+          ...copyableRows.map((r) => ({
+            name: `${chalk.white(r.name)}  ${chalk.dim(r.value.slice(0, 24) + (r.value.length > 24 ? '...' : ''))}`,
+            value: r,
+          })),
+          new inquirer.Separator(),
+          { name: chalk.dim('Done'), value: null },
+        ],
+      },
+    ]);
+
+    if (toCopy === null) {
+      copying = false;
+    } else {
+      try {
+        await clipboardy.write(toCopy.value);
+        console.log(`  ${green('✔')} ${chalk.white(toCopy.name)} copied to clipboard.`);
+        console.log('');
+      } catch {
+        warn('Could not access clipboard. Copy the value manually from above.');
+        console.log('');
+      }
+    }
+  }
+
   console.log('');
 }
