@@ -15,8 +15,12 @@ function CliAuthContent() {
 
   const port = searchParams.get('port');
   const state = searchParams.get('state');
+  const requestId = searchParams.get('request_id');
 
-  const isValid = port && /^\d+$/.test(port) && state;
+  // Support both new polling flow (request_id) and legacy localhost flow (port)
+  const isPollingFlow = requestId && state;
+  const isLegacyFlow = port && /^\d+$/.test(port) && state;
+  const isValid = isPollingFlow || isLegacyFlow;
 
   const handleAuthorize = async () => {
     if (!isValid) return;
@@ -30,18 +34,38 @@ function CliAuthContent() {
       }
       const { token } = await res.json();
 
-      // Redirect to CLI's local server
-      window.location.href = `http://localhost:${port}/callback?token=${encodeURIComponent(token)}&state=${encodeURIComponent(state)}`;
-      setStatus('success');
+      if (isPollingFlow) {
+        // New polling flow: POST token to backend
+        const completeRes = await fetch(`/api/cli/auth-request/${requestId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token, state }),
+        });
+        if (!completeRes.ok) {
+          const data = await completeRes.json();
+          throw new Error(data.error || 'Failed to complete auth request');
+        }
+        setStatus('success');
+      } else {
+        // Legacy flow: redirect to CLI's local server
+        window.location.href = `http://localhost:${port}/callback?token=${encodeURIComponent(token)}&state=${encodeURIComponent(state)}`;
+        setStatus('success');
+      }
     } catch (err) {
       setErrorMsg(err.message);
       setStatus('error');
     }
   };
 
-  const handleDeny = () => {
+  const handleDeny = async () => {
     setStatus('denied');
-    if (isValid) {
+    if (isPollingFlow) {
+      await fetch(`/api/cli/auth-request/${requestId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'deny', state }),
+      });
+    } else if (isLegacyFlow) {
       window.location.href = `http://localhost:${port}/callback?error=denied&state=${encodeURIComponent(state)}`;
     }
   };
@@ -55,6 +79,9 @@ function CliAuthContent() {
   }
 
   if (!user) {
+    const redirectParams = isPollingFlow
+      ? `request_id=${requestId}&state=${state}`
+      : `port=${port || ''}&state=${state || ''}`;
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center p-4">
         <div className="w-full max-w-md">
@@ -62,7 +89,7 @@ function CliAuthContent() {
             <h1 className="text-3xl font-bold text-white mb-2">Vaulter CLI</h1>
             <p className="text-purple-300">Sign in to authorize the CLI</p>
           </div>
-          <SignIn afterSignInUrl={`/cli-auth?port=${port || ''}&state=${state || ''}`} />
+          <SignIn afterSignInUrl={`/cli-auth?${redirectParams}`} />
         </div>
       </div>
     );
@@ -120,7 +147,11 @@ function CliAuthContent() {
 
         {status === 'success' && (
           <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-3 mb-4">
-            <p className="text-green-400 text-sm">Authorized! Redirecting to CLI...</p>
+            <p className="text-green-400 text-sm">
+              {isPollingFlow
+                ? 'Authorized! You can close this tab and return to your terminal.'
+                : 'Authorized! Redirecting to CLI...'}
+            </p>
           </div>
         )}
 

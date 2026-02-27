@@ -1,107 +1,101 @@
-import http from 'http';
 import crypto from 'crypto';
 import open from 'open';
 import ora from 'ora';
-import { saveToken, getToken } from '../lib/auth.js';
+import { saveToken } from '../lib/auth.js';
 import { getApiUrl } from '../lib/config.js';
 import { printLogo } from '../assets/logo.js';
 import { success, error, info } from '../lib/ui.js';
 
+const POLL_INTERVAL_MS = 2000;
+const TIMEOUT_MS = 120000;
+
+function isSSH() {
+  return !!(process.env.SSH_CLIENT || process.env.SSH_TTY || process.env.SSH_CONNECTION);
+}
+
 export async function signIn() {
+  const requestId = crypto.randomBytes(16).toString('hex');
   const state = crypto.randomBytes(16).toString('hex');
+  const apiUrl = getApiUrl();
 
-  return new Promise((resolve) => {
-    const server = http.createServer(async (req, res) => {
-      const url = new URL(req.url, `http://localhost`);
+  // Register pending auth request on backend
+  const registerRes = await fetch(`${apiUrl}/api/cli/auth-request`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ request_id: requestId, state }),
+  });
 
-      if (url.pathname === '/callback') {
-        const token = url.searchParams.get('token');
-        const returnedState = url.searchParams.get('state');
-        const denied = url.searchParams.get('error');
+  if (!registerRes.ok) {
+    const data = await registerRes.json().catch(() => ({}));
+    error(`Failed to start authentication: ${data.error || registerRes.status}`);
+    return;
+  }
 
-        if (denied === 'denied') {
-          res.writeHead(200, { 'Content-Type': 'text/html' });
-          res.end('<html><body style="background:#0f172a;color:#c4b5fd;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0"><h2>Authorization denied. You can close this tab.</h2></body></html>');
-          spinner.fail('Authorization denied.');
-          server.close();
-          resolve();
-          return;
-        }
+  const authUrl = `${apiUrl}/cli-auth?request_id=${requestId}&state=${state}`;
 
-        if (returnedState !== state) {
-          res.writeHead(400, { 'Content-Type': 'text/html' });
-          res.end('<html><body style="background:#0f172a;color:#ef4444;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0"><h2>State mismatch. Please try again.</h2></body></html>');
-          spinner.fail('State mismatch - possible CSRF attack. Try again.');
-          server.close();
-          resolve();
-          return;
-        }
+  console.log('');
+  if (isSSH()) {
+    info('Open this URL in your browser to authenticate:');
+    console.log(`  ${authUrl}`);
+  } else {
+    info('Opening browser for authentication...');
+    info(`If the browser doesn't open, visit:`);
+    console.log(`  ${authUrl}`);
+    open(authUrl);
+  }
+  console.log('');
 
-        if (token) {
-          saveToken(token);
+  const spinner = ora({
+    text: 'Waiting for browser authorization...',
+    color: 'magenta',
+  }).start();
 
-          // Verify the token works
-          try {
-            const verifyRes = await fetch(`${getApiUrl()}/api/keys`, {
-              headers: { 'Authorization': `Bearer ${token}` },
-            });
-            if (!verifyRes.ok) throw new Error('Verification failed');
-          } catch {
-            res.writeHead(200, { 'Content-Type': 'text/html' });
-            res.end('<html><body style="background:#0f172a;color:#ef4444;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0"><h2>Token verification failed. Please try again.</h2></body></html>');
-            spinner.fail('Token verification failed.');
-            server.close();
-            resolve();
-            return;
-          }
+  const deadline = Date.now() + TIMEOUT_MS;
 
-          res.writeHead(200, { 'Content-Type': 'text/html' });
-          res.end('<html><body style="background:#0f172a;color:#a78bfa;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0"><div style="text-align:center"><h2 style="color:#22c55e">Authenticated!</h2><p>You can close this tab and return to your terminal.</p></div></body></html>');
-          spinner.succeed('Authenticated successfully!');
-          await printLogo();
-          success('You are now signed in to Vaulter.');
-          info('Run `vaulter ls` to list your keys.');
-          server.close();
-          resolve();
-          return;
-        }
+  while (Date.now() < deadline) {
+    await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
 
-        res.writeHead(400, { 'Content-Type': 'text/html' });
-        res.end('<html><body style="background:#0f172a;color:#ef4444;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0"><h2>Missing token. Please try again.</h2></body></html>');
-        spinner.fail('No token received.');
-        server.close();
-        resolve();
+    let pollData;
+    try {
+      const pollRes = await fetch(`${apiUrl}/api/cli/auth-request/${requestId}`);
+      pollData = await pollRes.json();
+    } catch {
+      // Network hiccup — keep polling
+      continue;
+    }
+
+    if (pollData.status === 'completed') {
+      const token = pollData.token;
+
+      // Verify the token works
+      try {
+        const verifyRes = await fetch(`${apiUrl}/api/keys`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!verifyRes.ok) throw new Error('Verification failed');
+      } catch {
+        spinner.fail('Token verification failed. Please try again.');
         return;
       }
 
-      res.writeHead(404);
-      res.end('Not found');
-    });
+      saveToken(token);
+      spinner.succeed('Authenticated successfully!');
+      await printLogo();
+      success('You are now signed in to Vaulter.');
+      info('Run `vaulter ls` to list your keys.');
+      return;
+    }
 
-    server.listen(0, () => {
-      const port = server.address().port;
-      const authUrl = `${getApiUrl()}/cli-auth?port=${port}&state=${state}`;
+    if (pollData.status === 'denied') {
+      spinner.fail('Authorization denied.');
+      return;
+    }
 
-      console.log('');
-      info('Opening browser for authentication...');
-      console.log('');
-      info(`If the browser doesn't open, visit:`);
-      console.log(`  ${authUrl}`);
-      console.log('');
+    if (pollData.status === 'expired') {
+      spinner.fail('Authorization request expired. Please try again.');
+      return;
+    }
+  }
 
-      open(authUrl);
-    });
-
-    const spinner = ora({
-      text: 'Waiting for browser authorization...',
-      color: 'magenta',
-    }).start();
-
-    // 120 second timeout
-    setTimeout(() => {
-      spinner.fail('Authorization timed out (120s). Please try again.');
-      server.close();
-      resolve();
-    }, 120000);
-  });
+  spinner.fail('Authorization timed out (120s). Please try again.');
 }
