@@ -11,11 +11,11 @@ export const yellow = chalk.yellow;
 export const cyan = chalk.cyan;
 
 export function success(msg) {
-  console.log(green('  ' + msg));
+  console.log(green('  ✔ ' + msg));
 }
 
 export function error(msg) {
-  console.log(red('  ' + msg));
+  console.log(red('  ✗ ' + msg));
 }
 
 export function info(msg) {
@@ -23,7 +23,7 @@ export function info(msg) {
 }
 
 export function warn(msg) {
-  console.log(yellow('  ' + msg));
+  console.log(yellow('  ⚠ ' + msg));
 }
 
 export function tip(msg) {

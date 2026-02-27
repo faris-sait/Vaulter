@@ -43,21 +43,23 @@ export async function listKeys() {
     for (const key of keys) {
       const tags = (key.tags || []).join(', ') || dim('none');
       const created = new Date(key.created_at).toLocaleDateString();
-      const usage = key.usage_count || 0;
+      const usageCount = key.usage_count || 0;
+      const usage = usageCount > 0 ? dim(`${usageCount}x`) : dim('—');
 
       table.push([
         chalk.white(key.name),
         chalk.hex('#a78bfa')(key.masked_key),
         dim(tags),
         dim(created),
-        dim(`${usage}x`),
+        usage,
       ]);
     }
 
     console.log('');
     console.log(table.toString());
     console.log('');
-    console.log(dim(`  ${keys.length} key(s) in your vault`));
+    const label = keys.length === 1 ? '1 key in your vault' : `${keys.length} keys in your vault`;
+    console.log(dim(`  ${label}`));
     tip('Run `vaulter make .env` to export keys to a .env file.');
     console.log('');
   } catch (err) {

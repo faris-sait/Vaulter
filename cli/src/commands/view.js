@@ -3,7 +3,7 @@ import ora from 'ora';
 import chalk from 'chalk';
 import clipboardy from 'clipboardy';
 import { apiFetch } from '../lib/api.js';
-import { purple, dim, error, warn, green } from '../lib/ui.js';
+import { purple, dim, error, warn, success, tip } from '../lib/ui.js';
 
 const DIVIDER_WIDTH = 60;
 const divider = chalk.dim('─'.repeat(DIVIDER_WIDTH));
@@ -96,6 +96,9 @@ export async function viewKeys(names) {
 
   decryptSpinner.stop();
 
+  const failed = rows.filter(r => r.value === null);
+  failed.forEach(r => warn(`Failed to decrypt "${r.name}"`));
+
   // Display cards
   console.log('');
   console.log(`  ${chalk.dim('━'.repeat(DIVIDER_WIDTH))}`);
@@ -143,7 +146,7 @@ export async function viewKeys(names) {
     } else {
       try {
         await clipboardy.write(toCopy.value);
-        console.log(`  ${green('✔')} ${chalk.white(toCopy.name)} copied to clipboard.`);
+        success(`${chalk.white(toCopy.name)} copied to clipboard.`);
         console.log('');
       } catch {
         warn('Could not access clipboard. Copy the value manually from above.');
@@ -152,5 +155,6 @@ export async function viewKeys(names) {
     }
   }
 
+  tip('Run `clear` to wipe your terminal and protect these values.');
   console.log('');
 }
