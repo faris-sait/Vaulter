@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { withOAuthCors as withCors } from '../../lib/server/cors.js';
 import {
   authenticateOAuthClient,
   exchangeAuthorizationCode,
@@ -10,30 +11,11 @@ import {
 } from '../../lib/server/mcp-oauth.js';
 import { rateLimitByIp, rateLimitErrorResponse, withRateLimitHeaders } from '../../lib/server/rate-limit.js';
 
-const CORS_HEADERS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Accept, Mcp-Protocol-Version',
-};
 const TOKEN_RATE_LIMIT = {
   namespace: 'oauth-token',
   limit: 45,
   windowMs: 10 * 60 * 1000,
 };
-
-function withCors(response) {
-  const headers = new Headers(response.headers);
-
-  for (const [key, value] of Object.entries(CORS_HEADERS)) {
-    headers.set(key, value);
-  }
-
-  return new NextResponse(response.body, {
-    status: response.status,
-    statusText: response.statusText,
-    headers,
-  });
-}
 
 function tokenResponse(body) {
   return withCors(NextResponse.json(body, {

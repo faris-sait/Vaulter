@@ -29,18 +29,35 @@ CREATE INDEX IF NOT EXISTS idx_api_keys_created_at ON api_keys(created_at DESC);
 
 6. You should see "Success. No rows returned" message
 
-## ✅ Step 2: Enable Row Level Security (Optional but Recommended)
+## ✅ Step 2: Enable Row Level Security (Required)
 
-For added security, you can enable RLS policies:
+Enable RLS to enforce per-user data isolation:
 
 ```sql
 ALTER TABLE api_keys ENABLE ROW LEVEL SECURITY;
 
 -- Policy: Users can only access their own keys
-CREATE POLICY "Users can manage their own keys" 
-ON api_keys 
-FOR ALL 
-USING (true);  -- Service role bypasses RLS
+CREATE POLICY "Users can manage their own keys"
+ON api_keys
+FOR ALL
+USING (user_id = auth.uid()::text);
+
+-- Note: The service role key bypasses RLS. This policy provides
+-- defense-in-depth protection if the anon key is ever used by mistake.
+```
+
+### Step 2b: Create atomic usage increment function
+
+```sql
+CREATE OR REPLACE FUNCTION increment_key_usage(p_key_id UUID, p_user_id TEXT)
+RETURNS void AS $$
+BEGIN
+  UPDATE api_keys
+  SET usage_count = usage_count + 1,
+      last_used = NOW()
+  WHERE id = p_key_id AND user_id = p_user_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 ```
 
 ## ✅ Step 3: Verify Table Creation

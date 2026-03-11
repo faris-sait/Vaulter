@@ -1,10 +1,5 @@
-import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
-
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+import { getSupabaseAdmin } from '../../../../lib/server/supabase-admin.js';
 
 export async function POST(request) {
   try {
@@ -19,6 +14,7 @@ export async function POST(request) {
     }
 
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+    const supabase = getSupabaseAdmin();
 
     const { error } = await supabase
       .from('cli_auth_requests')
@@ -37,6 +33,6 @@ export async function POST(request) {
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error('Auth request error:', err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

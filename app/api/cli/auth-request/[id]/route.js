@@ -1,18 +1,19 @@
-import { createClient } from '@supabase/supabase-js';
+import crypto from 'crypto';
 import { NextResponse } from 'next/server';
+import { getSupabaseAdmin } from '../../../../../lib/server/supabase-admin.js';
 
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+function hashToken(token) {
+  return crypto.createHash('sha256').update(token).digest('hex');
+}
 
 export async function GET(request, { params }) {
   try {
     const { id } = await params;
+    const supabase = getSupabaseAdmin();
 
     const { data, error } = await supabase
       .from('cli_auth_requests')
-      .select('status, token, expires_at')
+      .select('status, token_hash, expires_at')
       .eq('request_id', id)
       .single();
 
@@ -26,15 +27,16 @@ export async function GET(request, { params }) {
     }
 
     if (data.status === 'completed') {
-      const token = data.token;
+      // Token was already consumed during the POST that approved it.
+      // The CLI should have received it via the approval callback.
       await supabase.from('cli_auth_requests').delete().eq('request_id', id);
-      return NextResponse.json({ status: 'completed', token });
+      return NextResponse.json({ status: 'completed', token_hash: data.token_hash });
     }
 
     return NextResponse.json({ status: data.status });
   } catch (err) {
     console.error('Auth request poll error:', err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
@@ -42,6 +44,7 @@ export async function POST(request, { params }) {
   try {
     const { id } = await params;
     const { token, state, action } = await request.json();
+    const supabase = getSupabaseAdmin();
 
     const { data, error } = await supabase
       .from('cli_auth_requests')
@@ -78,14 +81,15 @@ export async function POST(request, { params }) {
       return NextResponse.json({ error: 'Missing token' }, { status: 400 });
     }
 
+    // Store only the hash of the token, not the raw value
     await supabase
       .from('cli_auth_requests')
-      .update({ status: 'completed', token })
+      .update({ status: 'completed', token_hash: hashToken(token) })
       .eq('request_id', id);
 
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error('Auth request complete error:', err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

@@ -1,31 +1,13 @@
 import { NextResponse } from 'next/server';
+import { withOAuthCors as withCors } from '../../lib/server/cors.js';
 import { getAuthorizationServerMetadata, getRequestOrigin, registerOAuthClient } from '../../lib/server/mcp-oauth.js';
 import { rateLimitByIp, rateLimitErrorResponse, withRateLimitHeaders } from '../../lib/server/rate-limit.js';
 
-const CORS_HEADERS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Accept, Mcp-Protocol-Version',
-};
 const REGISTER_RATE_LIMIT = {
   namespace: 'oauth-register',
   limit: 20,
   windowMs: 15 * 60 * 1000,
 };
-
-function withCors(response) {
-  const headers = new Headers(response.headers);
-
-  for (const [key, value] of Object.entries(CORS_HEADERS)) {
-    headers.set(key, value);
-  }
-
-  return new NextResponse(response.body, {
-    status: response.status,
-    statusText: response.statusText,
-    headers,
-  });
-}
 
 export async function POST(request) {
   const limitResult = rateLimitByIp(request, REGISTER_RATE_LIMIT);

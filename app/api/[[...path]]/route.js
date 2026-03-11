@@ -49,16 +49,18 @@ async function GET(request) {
         return json({ error: 'Key not found' }, { status: 404 }, limitResult);
       }
 
+      const { encrypted_key: _omit, ...safeData } = data;
+
       if (shouldDecrypt) {
         try {
-          const decryptedKey = decryptSecret(data.encrypted_key);
-          return json({ ...data, decrypted_key: decryptedKey }, {}, limitResult);
+          const decryptedKey = decryptSecret(data.encrypted_key, userId);
+          return json({ ...safeData, decrypted_key: decryptedKey }, {}, limitResult);
         } catch (err) {
           return json({ error: 'Decryption failed' }, { status: 500 }, limitResult);
         }
       }
 
-      return json(data, {}, limitResult);
+      return json(safeData, {}, limitResult);
     }
 
     // GET /api/keys - List all keys
@@ -79,7 +81,7 @@ async function GET(request) {
     return json({ error: 'Not found' }, { status: 404 }, limitResult);
   } catch (error) {
     console.error('GET Error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
@@ -102,36 +104,34 @@ async function POST(request) {
     const { pathname } = new URL(request.url);
     const pathParts = pathname.split('/').filter(Boolean);
 
-    // POST /api/usage/:id - Log usage
+    // POST /api/usage/:id - Log usage (atomic increment via SQL)
     if (pathParts.length === 3 && pathParts[0] === 'api' && pathParts[1] === 'usage') {
       const keyId = pathParts[2];
 
-      const { error } = await supabase
-        .from('api_keys')
-        .update({
-          last_used: new Date().toISOString(),
-          usage_count: supabase.rpc('increment_usage', { key_id: keyId })
-        })
-        .eq('id', keyId)
-        .eq('user_id', userId);
+      const { error } = await supabase.rpc('increment_key_usage', {
+        p_key_id: keyId,
+        p_user_id: userId,
+      });
 
-      // If RPC doesn't exist, update manually
-      const { data: currentKey } = await supabase
-        .from('api_keys')
-        .select('usage_count')
-        .eq('id', keyId)
-        .eq('user_id', userId)
-        .single();
-
-      if (currentKey) {
-        await supabase
+      if (error) {
+        // Fallback: non-atomic update if RPC doesn't exist yet
+        const { data: currentKey } = await supabase
           .from('api_keys')
-          .update({
-            last_used: new Date().toISOString(),
-            usage_count: (currentKey.usage_count || 0) + 1
-          })
+          .select('usage_count')
           .eq('id', keyId)
-          .eq('user_id', userId);
+          .eq('user_id', userId)
+          .single();
+
+        if (currentKey) {
+          await supabase
+            .from('api_keys')
+            .update({
+              last_used: new Date().toISOString(),
+              usage_count: (currentKey.usage_count || 0) + 1,
+            })
+            .eq('id', keyId)
+            .eq('user_id', userId);
+        }
       }
 
       return json({ success: true }, {}, limitResult);
@@ -168,7 +168,7 @@ async function POST(request) {
         }
 
         try {
-          const encryptedKey = encryptSecret(apiKey);
+          const encryptedKey = encryptSecret(apiKey, userId);
           const maskedKey = maskKey(apiKey);
 
           const shouldOverwrite = overwriteKeys && overwriteKeys.includes(trimmedName);
@@ -232,8 +232,16 @@ async function POST(request) {
         );
       }
 
-      // Encrypt the key
-      const encryptedKey = encryptSecret(apiKey);
+      if (typeof apiKey !== 'string' || apiKey.length > 10000) {
+        return json(
+          { error: 'API key must be a string under 10,000 characters' },
+          { status: 400 },
+          limitResult
+        );
+      }
+
+      // Encrypt the key with per-user derived key
+      const encryptedKey = encryptSecret(apiKey, userId);
       const maskedKey = maskKey(apiKey);
 
       const { data, error } = await supabase
@@ -262,7 +270,7 @@ async function POST(request) {
     return json({ error: 'Not found' }, { status: 404 }, limitResult);
   } catch (error) {
     console.error('POST Error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
@@ -303,7 +311,7 @@ async function DELETE(request) {
     return json({ error: 'Not found' }, { status: 404 }, limitResult);
   } catch (error) {
     console.error('DELETE Error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 

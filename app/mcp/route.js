@@ -1,6 +1,7 @@
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js';
 import { NextResponse } from 'next/server';
 import { createVaulterMcpServer } from '../../lib/mcp/server.js';
+import { withMcpCors as withCors } from '../../lib/server/cors.js';
 import { buildWwwAuthenticateHeader, getRequestOrigin, verifyAccessTokenForResource } from '../../lib/server/mcp-oauth.js';
 import { rateLimitByIp, rateLimitErrorResponse, withRateLimitHeaders } from '../../lib/server/rate-limit.js';
 import { resolveStoredBearerUser } from '../../lib/server/vaulter-auth.js';
@@ -8,31 +9,11 @@ import { resolveStoredBearerUser } from '../../lib/server/vaulter-auth.js';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const CORS_HEADERS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers': 'Authorization, Content-Type, Accept, Mcp-Protocol-Version, Mcp-Session-Id, Last-Event-ID',
-  'Access-Control-Expose-Headers': 'Mcp-Protocol-Version, Mcp-Session-Id, WWW-Authenticate',
-};
 const MCP_RATE_LIMIT = {
   namespace: 'mcp',
   limit: 120,
   windowMs: 60 * 1000,
 };
-
-function withCors(response) {
-  const headers = new Headers(response.headers);
-
-  for (const [key, value] of Object.entries(CORS_HEADERS)) {
-    headers.set(key, value);
-  }
-
-  return new NextResponse(response.body, {
-    status: response.status,
-    statusText: response.statusText,
-    headers,
-  });
-}
 
 function jsonRpcErrorResponse(status, message, extraHeaders = {}) {
   return withCors(new NextResponse(
