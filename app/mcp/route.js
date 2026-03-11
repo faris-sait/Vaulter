@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
   'Access-Control-Allow-Headers': 'Authorization, Content-Type, Accept, Mcp-Protocol-Version, Mcp-Session-Id, Last-Event-ID',
   'Access-Control-Expose-Headers': 'Mcp-Protocol-Version, Mcp-Session-Id, WWW-Authenticate',
 };
@@ -101,7 +101,30 @@ async function resolveMcpUser(request) {
   };
 }
 
-async function handlePost(request) {
+function infoResponse(request) {
+  const origin = getRequestOrigin(request);
+
+  return withCors(NextResponse.json({
+    name: 'Vaulter MCP',
+    transport: 'streamable-http',
+    endpoint: `${origin}/mcp`,
+    auth: {
+      primary: 'OAuth 2.1 with browser sign-in via Clerk',
+      fallback: 'Create a manual MCP token at /mcp-access',
+    },
+    discovery: {
+      authorizationServer: `${origin}/.well-known/oauth-authorization-server`,
+      protectedResource: `${origin}/.well-known/oauth-protected-resource/mcp`,
+    },
+    note: 'Opening /mcp directly in a browser does not start an MCP session. MCP clients should connect using Streamable HTTP.',
+  }, {
+    headers: {
+      'Cache-Control': 'no-store',
+    },
+  }));
+}
+
+async function handleTransportRequest(request) {
   const limitResult = rateLimitByIp(request, MCP_RATE_LIMIT);
   if (!limitResult.allowed) {
     return rateLimitErrorResponse(limitResult, {
@@ -125,8 +148,12 @@ async function handlePost(request) {
   try {
     await server.connect(transport);
     const response = await transport.handleRequest(request);
-    await transport.close();
-    await server.close();
+
+    if (request.method !== 'GET') {
+      await transport.close();
+      await server.close();
+    }
+
     return withRateLimitHeaders(withCors(response), limitResult);
   } catch (error) {
     console.error('Error handling MCP request:', error);
@@ -137,22 +164,28 @@ async function handlePost(request) {
 }
 
 export async function POST(request) {
-  return handlePost(request);
+  return handleTransportRequest(request);
 }
 
-export async function GET() {
-  return jsonRpcErrorResponse(405, 'Method not allowed.', { Allow: 'POST, OPTIONS' });
+export async function GET(request) {
+  const accept = request.headers.get('accept') || '';
+
+  if (accept.includes('text/event-stream')) {
+    return handleTransportRequest(request);
+  }
+
+  return infoResponse(request);
 }
 
-export async function DELETE() {
-  return jsonRpcErrorResponse(405, 'Method not allowed.', { Allow: 'POST, OPTIONS' });
+export async function DELETE(request) {
+  return handleTransportRequest(request);
 }
 
 export async function OPTIONS() {
   return withCors(new NextResponse(null, {
     status: 204,
     headers: {
-      Allow: 'POST, OPTIONS',
+      Allow: 'GET, POST, DELETE, OPTIONS',
     },
   }));
 }
