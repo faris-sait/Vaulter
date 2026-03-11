@@ -1,12 +1,13 @@
-import { createClient } from '@supabase/supabase-js';
 import { auth } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
-import crypto from 'crypto';
+import { rateLimitByIdentifier, rateLimitErrorResponse, withRateLimitHeaders } from '../../../../lib/server/rate-limit.js';
+import { createNamedToken } from '../../../../lib/server/tokens.js';
 
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+const CLI_TOKEN_CREATE_LIMIT = {
+  namespace: 'cli-token-create',
+  limit: 20,
+  windowMs: 60 * 60 * 1000,
+};
 
 export async function POST() {
   try {
@@ -15,24 +16,18 @@ export async function POST() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Generate a random 48-byte token
-    const token = crypto.randomBytes(48).toString('hex');
-    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
-
-    const { error } = await supabase
-      .from('cli_tokens')
-      .insert({
-        user_id: userId,
-        token_hash: tokenHash,
-        name: 'Vaulter CLI',
-      });
-
-    if (error) {
-      console.error('Error creating CLI token:', error);
-      return NextResponse.json({ error: 'Failed to create token' }, { status: 500 });
+    const limitResult = rateLimitByIdentifier(userId, CLI_TOKEN_CREATE_LIMIT);
+    if (!limitResult.allowed) {
+      return rateLimitErrorResponse(limitResult, { error: 'Too many CLI token requests' });
     }
 
-    return NextResponse.json({ token });
+    const { token } = await createNamedToken(userId, 'Vaulter CLI');
+
+    return withRateLimitHeaders(NextResponse.json({ token }, {
+      headers: {
+        'Cache-Control': 'no-store',
+      },
+    }), limitResult);
   } catch (error) {
     console.error('CLI token error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });

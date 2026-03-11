@@ -25,6 +25,7 @@ Vaulter is a secure API key manager with a CLI and a web dashboard. Store, encry
   - [vaulter make](#vaulter-make-filename)
   - [vaulter save](#vaulter-save-filename)
   - [vaulter web-app](#vaulter-web-app)
+- [MCP Server](#mcp-server)
 - [Web App](#web-app)
   - [Dashboard](#dashboard)
   - [Key Management](#key-management)
@@ -258,6 +259,62 @@ vaulter web-app
 
 ---
 
+## MCP Server
+
+Vaulter now exposes a hosted MCP endpoint at `/mcp`, so it can be used by remote-capable AI clients such as Claude Code, OpenCode, Cursor, and GitHub Copilot integrations that support remote MCP servers.
+
+Hosted endpoint:
+
+```text
+https://vaulter-nine.vercel.app/mcp
+```
+
+Self-hosted endpoint:
+
+```text
+https://your-domain.example/mcp
+```
+
+Authentication:
+
+- Supporting MCP clients can use browser-based OAuth automatically:
+  1. client connects to `/mcp`
+  2. Vaulter returns an auth challenge
+  3. the client opens your browser to `/authorize`
+  4. you sign in with Clerk and approve access
+  5. the client receives an MCP access token and reconnects
+- Clients that do not support OAuth yet can still use `Authorization: Bearer <mcp-token>`.
+- Signed-in users can create dedicated fallback MCP tokens from `/mcp-access` in the web app.
+- Sensitive MCP endpoints are rate-limited. For production at larger scale, use a shared rate-limit store instead of per-instance memory.
+- If you prefer a local stdio wrapper for development, there is also an optional package in `mcp/`.
+
+Available MCP tools:
+
+- `vaulter_list_keys` - list masked key metadata only
+- `vaulter_view_keys` - decrypt one or more keys by exact name with partial success handling
+- `vaulter_add_key` - add a new key to the vault
+- `vaulter_remove_key` - remove by exact name or UUID prefix with confirmation handling
+- `vaulter_get_env_map` - decrypt selected keys and return both JSON env output and dotenv content
+
+Fallback config shape for clients without OAuth:
+
+```json
+{
+  "mcpServers": {
+    "vaulter": {
+      "url": "https://vaulter-nine.vercel.app/mcp",
+      "headers": {
+        "Authorization": "Bearer YOUR_VAULTER_TOKEN"
+      }
+    }
+  }
+}
+```
+
+OAuth discovery endpoints are also exposed at `/.well-known/oauth-authorization-server` and `/.well-known/oauth-protected-resource/mcp`. For local stdio development or fallback usage, see `mcp/README.md`.
+
+---
+
 ## Web App
 
 The Vaulter web app is a full-featured dashboard for managing your encrypted keys. Access it at **[vaulter-nine.vercel.app](https://vaulter-nine.vercel.app)** or self-host it.
@@ -353,6 +410,9 @@ CLERK_SECRET_KEY=your_clerk_secret_key
 
 # Encryption (64-char hex string)
 ENCRYPTION_KEY=your_64_char_hex_encryption_key
+
+# Recommended separate secret for MCP OAuth signing
+MCP_OAUTH_SECRET=your_long_random_oauth_secret
 ```
 
 Run the dev server:

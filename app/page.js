@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import Image from 'next/image';
+import Link from 'next/link';
 
 export default function Dashboard() {
   const { user, isLoaded } = useUser();
@@ -388,7 +389,14 @@ export default function Dashboard() {
             </div>
             <p className="text-purple-200 text-lg font-medium">Your keys. Your vault. Your control.</p>
           </div>
-          {user && <UserButton afterSignOutUrl="/" />}
+          {user && (
+            <div className="flex items-center gap-3">
+              <Button asChild variant="outline" className="border-white/20 bg-white/5 text-white hover:bg-white/10">
+                <Link href="/mcp-access">MCP Access</Link>
+              </Button>
+              <UserButton afterSignOutUrl="/" />
+            </div>
+          )}
         </div>
 
         {/* Stats Cards */}

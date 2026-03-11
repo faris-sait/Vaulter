@@ -1,0 +1,158 @@
+import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js';
+import { NextResponse } from 'next/server';
+import { createVaulterMcpServer } from '../../lib/mcp/server.js';
+import { buildWwwAuthenticateHeader, getRequestOrigin, verifyAccessTokenForResource } from '../../lib/server/mcp-oauth.js';
+import { rateLimitByIp, rateLimitErrorResponse, withRateLimitHeaders } from '../../lib/server/rate-limit.js';
+import { resolveStoredBearerUser } from '../../lib/server/vaulter-auth.js';
+
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
+const CORS_HEADERS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Authorization, Content-Type, Accept, Mcp-Protocol-Version, Mcp-Session-Id, Last-Event-ID',
+  'Access-Control-Expose-Headers': 'Mcp-Protocol-Version, Mcp-Session-Id, WWW-Authenticate',
+};
+const MCP_RATE_LIMIT = {
+  namespace: 'mcp',
+  limit: 120,
+  windowMs: 60 * 1000,
+};
+
+function withCors(response) {
+  const headers = new Headers(response.headers);
+
+  for (const [key, value] of Object.entries(CORS_HEADERS)) {
+    headers.set(key, value);
+  }
+
+  return new NextResponse(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+
+function jsonRpcErrorResponse(status, message, extraHeaders = {}) {
+  return withCors(new NextResponse(
+    JSON.stringify({
+      jsonrpc: '2.0',
+      error: {
+        code: -32000,
+        message,
+      },
+      id: null,
+    }),
+    {
+      status,
+      headers: {
+        'Content-Type': 'application/json',
+        ...extraHeaders,
+      },
+    }
+  ));
+}
+
+function oauthErrorResponse(request, status, description) {
+  return withCors(new NextResponse(
+    JSON.stringify({
+      error: 'invalid_token',
+      error_description: description,
+    }),
+    {
+      status,
+      headers: {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-store',
+        'WWW-Authenticate': buildWwwAuthenticateHeader(getRequestOrigin(request), description),
+      },
+    }
+  ));
+}
+
+async function resolveMcpUser(request) {
+  const authHeader = request.headers.get('authorization');
+  let authFailure = 'Authorization required. Sign in through MCP OAuth or use an MCP token.';
+
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.slice(7);
+
+    try {
+      const accessToken = verifyAccessTokenForResource(token, getRequestOrigin(request));
+      return {
+        userId: accessToken.userId,
+        authFailure,
+      };
+    } catch {
+      authFailure = 'Invalid or expired bearer token.';
+    }
+
+    const fallback = await resolveStoredBearerUser(request, { requireMcpToken: true });
+    return {
+      userId: fallback.userId,
+      authFailure,
+    };
+  }
+
+  return {
+    userId: null,
+    authFailure,
+  };
+}
+
+async function handlePost(request) {
+  const limitResult = rateLimitByIp(request, MCP_RATE_LIMIT);
+  if (!limitResult.allowed) {
+    return rateLimitErrorResponse(limitResult, {
+      error: 'rate_limited',
+      error_description: 'Too many MCP requests. Try again shortly.',
+    });
+  }
+
+  const { userId, authFailure } = await resolveMcpUser(request);
+
+  if (!userId) {
+    return withRateLimitHeaders(oauthErrorResponse(request, 401, authFailure), limitResult);
+  }
+
+  const server = createVaulterMcpServer({ userId });
+  const transport = new WebStandardStreamableHTTPServerTransport({
+    sessionIdGenerator: undefined,
+    enableJsonResponse: true,
+  });
+
+  try {
+    await server.connect(transport);
+    const response = await transport.handleRequest(request);
+    await transport.close();
+    await server.close();
+    return withRateLimitHeaders(withCors(response), limitResult);
+  } catch (error) {
+    console.error('Error handling MCP request:', error);
+    await transport.close().catch(() => {});
+    await server.close().catch(() => {});
+    return withRateLimitHeaders(jsonRpcErrorResponse(500, 'Internal server error'), limitResult);
+  }
+}
+
+export async function POST(request) {
+  return handlePost(request);
+}
+
+export async function GET() {
+  return jsonRpcErrorResponse(405, 'Method not allowed.', { Allow: 'POST, OPTIONS' });
+}
+
+export async function DELETE() {
+  return jsonRpcErrorResponse(405, 'Method not allowed.', { Allow: 'POST, OPTIONS' });
+}
+
+export async function OPTIONS() {
+  return withCors(new NextResponse(null, {
+    status: 204,
+    headers: {
+      Allow: 'POST, OPTIONS',
+    },
+  }));
+}

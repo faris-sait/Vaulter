@@ -1,76 +1,16 @@
-import { createClient } from '@supabase/supabase-js';
-import { auth } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
-import crypto from 'crypto';
+import { rateLimitByIdentifier, rateLimitErrorResponse, withRateLimitHeaders } from '../../../lib/server/rate-limit.js';
+import { resolveVaulterUser } from '../../../lib/server/vaulter-auth.js';
+import { decryptSecret, encryptSecret, maskKey } from '../../../lib/server/vaulter-crypto.js';
+import { getSupabaseAdmin } from '../../../lib/server/supabase-admin.js';
 
-// Initialize Supabase client
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+const API_GET_LIMIT = { namespace: 'api-get', limit: 120, windowMs: 60 * 1000 };
+const API_POST_LIMIT = { namespace: 'api-post', limit: 60, windowMs: 60 * 1000 };
+const API_DELETE_LIMIT = { namespace: 'api-delete', limit: 30, windowMs: 60 * 1000 };
 
-// Resolve user from Clerk session or CLI Bearer token
-async function resolveUser(request) {
-  // Try Clerk session first
-  try {
-    const { userId } = await auth();
-    if (userId) return { userId };
-  } catch {}
-
-  // Fall back to CLI token
-  const authHeader = request.headers.get('authorization');
-  if (authHeader && authHeader.startsWith('Bearer ')) {
-    const token = authHeader.slice(7);
-    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
-
-    const { data, error } = await supabase
-      .from('cli_tokens')
-      .select('user_id')
-      .eq('token_hash', tokenHash)
-      .single();
-
-    if (data && !error) {
-      // Update last_used timestamp
-      await supabase
-        .from('cli_tokens')
-        .update({ last_used: new Date().toISOString() })
-        .eq('token_hash', tokenHash);
-
-      return { userId: data.user_id };
-    }
-  }
-
-  return { userId: null };
-}
-
-// Encryption utilities
-const ALGORITHM = 'aes-256-gcm';
-const ENCRYPTION_KEY = Buffer.from(process.env.ENCRYPTION_KEY, 'hex');
-
-function encrypt(text) {
-  const iv = crypto.randomBytes(16);
-  const cipher = crypto.createCipheriv(ALGORITHM, ENCRYPTION_KEY, iv);
-  let encrypted = cipher.update(text, 'utf8', 'hex');
-  encrypted += cipher.final('hex');
-  const authTag = cipher.getAuthTag();
-  return `${iv.toString('hex')}:${authTag.toString('hex')}:${encrypted}`;
-}
-
-function decrypt(encryptedText) {
-  const parts = encryptedText.split(':');
-  const iv = Buffer.from(parts[0], 'hex');
-  const authTag = Buffer.from(parts[1], 'hex');
-  const encrypted = parts[2];
-  const decipher = crypto.createDecipheriv(ALGORITHM, ENCRYPTION_KEY, iv);
-  decipher.setAuthTag(authTag);
-  let decrypted = decipher.update(encrypted, 'hex', 'utf8');
-  decrypted += decipher.final('utf8');
-  return decrypted;
-}
-
-function maskKey(key) {
-  if (key.length <= 8) return '****';
-  return `${key.substring(0, 4)}...${key.substring(key.length - 4)}`;
+function json(body, init = {}, rateLimitResult) {
+  const response = NextResponse.json(body, init);
+  return rateLimitResult ? withRateLimitHeaders(response, rateLimitResult) : response;
 }
 
 // GET /api/keys - List all keys (masked)
@@ -78,10 +18,17 @@ function maskKey(key) {
 // GET /api/keys/:id?decrypt=true - Get decrypted key
 async function GET(request) {
   try {
-    const { userId } = await resolveUser(request);
+    const { userId } = await resolveVaulterUser(request);
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    const limitResult = rateLimitByIdentifier(userId, API_GET_LIMIT);
+    if (!limitResult.allowed) {
+      return rateLimitErrorResponse(limitResult, { error: 'Too many read requests' });
+    }
+
+    const supabase = getSupabaseAdmin();
 
     const { pathname, searchParams } = new URL(request.url);
     const pathParts = pathname.split('/').filter(Boolean);
@@ -99,19 +46,19 @@ async function GET(request) {
         .single();
 
       if (error || !data) {
-        return NextResponse.json({ error: 'Key not found' }, { status: 404 });
+        return json({ error: 'Key not found' }, { status: 404 }, limitResult);
       }
 
       if (shouldDecrypt) {
         try {
-          const decryptedKey = decrypt(data.encrypted_key);
-          return NextResponse.json({ ...data, decrypted_key: decryptedKey });
+          const decryptedKey = decryptSecret(data.encrypted_key);
+          return json({ ...data, decrypted_key: decryptedKey }, {}, limitResult);
         } catch (err) {
-          return NextResponse.json({ error: 'Decryption failed' }, { status: 500 });
+          return json({ error: 'Decryption failed' }, { status: 500 }, limitResult);
         }
       }
 
-      return NextResponse.json(data);
+      return json(data, {}, limitResult);
     }
 
     // GET /api/keys - List all keys
@@ -123,13 +70,13 @@ async function GET(request) {
         .order('created_at', { ascending: false });
 
       if (error) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return json({ error: error.message }, { status: 500 }, limitResult);
       }
 
-      return NextResponse.json({ keys: data || [] });
+      return json({ keys: data || [] }, {}, limitResult);
     }
 
-    return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    return json({ error: 'Not found' }, { status: 404 }, limitResult);
   } catch (error) {
     console.error('GET Error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -140,10 +87,17 @@ async function GET(request) {
 // POST /api/usage/:id - Log usage event
 async function POST(request) {
   try {
-    const { userId } = await resolveUser(request);
+    const { userId } = await resolveVaulterUser(request);
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    const limitResult = rateLimitByIdentifier(userId, API_POST_LIMIT);
+    if (!limitResult.allowed) {
+      return rateLimitErrorResponse(limitResult, { error: 'Too many write requests' });
+    }
+
+    const supabase = getSupabaseAdmin();
 
     const { pathname } = new URL(request.url);
     const pathParts = pathname.split('/').filter(Boolean);
@@ -180,7 +134,7 @@ async function POST(request) {
           .eq('user_id', userId);
       }
 
-      return NextResponse.json({ success: true });
+      return json({ success: true }, {}, limitResult);
     }
 
     // POST /api/keys/bulk - Bulk import keys
@@ -188,10 +142,11 @@ async function POST(request) {
       const body = await request.json();
       const { keys: keysToImport, overwriteKeys } = body;
 
-      if (!Array.isArray(keysToImport) || keysToImport.length === 0) {
-        return NextResponse.json(
+        if (!Array.isArray(keysToImport) || keysToImport.length === 0) {
+        return json(
           { error: 'Keys array is required and must not be empty' },
-          { status: 400 }
+          { status: 400 },
+          limitResult
         );
       }
 
@@ -213,7 +168,7 @@ async function POST(request) {
         }
 
         try {
-          const encryptedKey = encrypt(apiKey);
+          const encryptedKey = encryptSecret(apiKey);
           const maskedKey = maskKey(apiKey);
 
           const shouldOverwrite = overwriteKeys && overwriteKeys.includes(trimmedName);
@@ -261,7 +216,7 @@ async function POST(request) {
         }
       }
 
-      return NextResponse.json(results, { status: 201 });
+      return json(results, { status: 201 }, limitResult);
     }
 
     // POST /api/keys - Create new key
@@ -270,14 +225,15 @@ async function POST(request) {
       const { name, apiKey, tags } = body;
 
       if (!name || !apiKey) {
-        return NextResponse.json(
+        return json(
           { error: 'Name and API key are required' },
-          { status: 400 }
+          { status: 400 },
+          limitResult
         );
       }
 
       // Encrypt the key
-      const encryptedKey = encrypt(apiKey);
+      const encryptedKey = encryptSecret(apiKey);
       const maskedKey = maskKey(apiKey);
 
       const { data, error } = await supabase
@@ -297,13 +253,13 @@ async function POST(request) {
 
       if (error) {
         console.error('Supabase insert error:', error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return json({ error: error.message }, { status: 500 }, limitResult);
       }
 
-      return NextResponse.json(data, { status: 201 });
+      return json(data, { status: 201 }, limitResult);
     }
 
-    return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    return json({ error: 'Not found' }, { status: 404 }, limitResult);
   } catch (error) {
     console.error('POST Error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -313,10 +269,17 @@ async function POST(request) {
 // DELETE /api/keys/:id - Delete key
 async function DELETE(request) {
   try {
-    const { userId } = await resolveUser(request);
+    const { userId } = await resolveVaulterUser(request);
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    const limitResult = rateLimitByIdentifier(userId, API_DELETE_LIMIT);
+    if (!limitResult.allowed) {
+      return rateLimitErrorResponse(limitResult, { error: 'Too many delete requests' });
+    }
+
+    const supabase = getSupabaseAdmin();
 
     const { pathname } = new URL(request.url);
     const pathParts = pathname.split('/').filter(Boolean);
@@ -331,13 +294,13 @@ async function DELETE(request) {
         .eq('user_id', userId);
 
       if (error) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return json({ error: error.message }, { status: 500 }, limitResult);
       }
 
-      return NextResponse.json({ success: true });
+      return json({ success: true }, {}, limitResult);
     }
 
-    return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    return json({ error: 'Not found' }, { status: 404 }, limitResult);
   } catch (error) {
     console.error('DELETE Error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
