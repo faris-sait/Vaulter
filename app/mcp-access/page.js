@@ -8,14 +8,20 @@ import { motion } from 'framer-motion';
 import {
   ArrowLeft,
   Bot,
+  Braces,
   Check,
+  Cloud,
   Command,
   Copy,
   ExternalLink,
+  FileCode,
+  Hexagon,
   Monitor,
   Shield,
   Sparkles,
+  SquareTerminal,
   Terminal,
+  Wind,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -75,6 +81,48 @@ export default function MpcAccessPage() {
       name: 'Cursor',
       command: 'Settings → Tools & MCP → Add remote server',
       icon: Bot,
+    },
+    {
+      id: 'windsurf',
+      name: 'Windsurf',
+      command: `Add to mcp_config.json: { "mcpServers": { "vaulter": { "serverUrl": "${endpoint}" } } }`,
+      icon: Wind,
+    },
+    {
+      id: 'cline',
+      name: 'Cline',
+      command: `Settings → MCP Servers → Add: { "url": "${endpoint}", "type": "streamableHttp" }`,
+      icon: SquareTerminal,
+    },
+    {
+      id: 'gemini-cli',
+      name: 'Gemini CLI',
+      command: `gemini mcp add --transport http vaulter ${endpoint}`,
+      icon: Hexagon,
+    },
+    {
+      id: 'jetbrains',
+      name: 'JetBrains AI',
+      command: `Settings → Tools → AI Assistant → MCP → Add: { "url": "${endpoint}" }`,
+      icon: Braces,
+    },
+    {
+      id: 'warp',
+      name: 'Warp',
+      command: `Warp Drive → MCP Servers → Add: { "vaulter": { "url": "${endpoint}" } }`,
+      icon: SquareTerminal,
+    },
+    {
+      id: 'codex-cli',
+      name: 'Codex CLI',
+      command: `Add to config: { "mcpServers": { "vaulter": { "url": "${endpoint}" } } }`,
+      icon: FileCode,
+    },
+    {
+      id: 'amazon-q',
+      name: 'Amazon Q',
+      command: `Add to MCP config: { "vaulter": { "type": "http", "url": "${endpoint}" } }`,
+      icon: Cloud,
     },
     {
       id: 'opencode',
