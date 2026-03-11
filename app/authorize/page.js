@@ -1,10 +1,11 @@
-import { auth, currentUser } from '@clerk/nextjs/server';
-import { redirect } from 'next/navigation';
-import { headers } from 'next/headers';
-import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Shield, Bot, KeyRound, ArrowLeft } from 'lucide-react';
+import Image from 'next/image';
 import Link from 'next/link';
+import { auth, currentUser } from '@clerk/nextjs/server';
+import { headers } from 'next/headers';
+import { redirect } from 'next/navigation';
+import { ArrowLeft, Bot, Key, Lock, Shield } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { issueAuthorizationConsent, parseAuthorizationRequest } from '../../lib/server/mcp-oauth.js';
 
 function resolveOrigin(headerStore) {
@@ -49,18 +50,46 @@ export default async function AuthorizePage({ searchParams }) {
 
   if (!authorization) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 p-6 md:p-8 text-white flex items-center justify-center">
-        <Card className="border-white/10 bg-white/5 backdrop-blur-xl p-8 max-w-xl w-full">
-          <p className="text-sm uppercase tracking-[0.24em] text-rose-300">OAuth Request Error</p>
-          <h1 className="text-3xl font-bold mt-3">This MCP sign-in request is invalid</h1>
-          <p className="text-slate-300 mt-3">{errorMessage || 'Vaulter could not validate the incoming authorization request.'}</p>
-          <Button asChild className="mt-6 bg-white/10 hover:bg-white/15 text-white border border-white/10">
-            <Link href="/">
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Vaulter
-            </Link>
-          </Button>
-        </Card>
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-8 flex flex-col">
+        <div className="max-w-7xl mx-auto mb-8 w-full">
+          <div className="flex items-center gap-1 mb-8">
+            <Image
+              src="/assets/vaulter-logo.svg"
+              alt="Vaulter Logo"
+              width={100}
+              height={100}
+              className="vaulter-logo-spin"
+            />
+            <div>
+              <h1 className="text-5xl font-bold text-white tracking-tight">Vaulter</h1>
+              <p className="text-purple-200 text-lg font-medium">Your keys. Your vault. Your control.</p>
+            </div>
+          </div>
+
+          <Card className="bg-white/10 backdrop-blur-lg border-white/20 p-8 max-w-2xl mx-auto text-center">
+            <Lock className="w-16 h-16 text-purple-400 mx-auto mb-4" />
+            <p className="text-purple-200 text-sm uppercase tracking-[0.24em]">OAuth Request Error</p>
+            <h2 className="text-3xl font-bold text-white mt-3">This MCP sign-in request is invalid</h2>
+            <p className="text-purple-300 mt-4">
+              {errorMessage || 'Vaulter could not validate the incoming authorization request.'}
+            </p>
+            <Button asChild className="mt-6 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white">
+              <Link href="/">
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back to Vaulter
+              </Link>
+            </Button>
+          </Card>
+        </div>
+
+        <div className="max-w-7xl mx-auto mt-auto pt-12 w-full">
+          <div className="text-center">
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/5 backdrop-blur-sm rounded-full border border-white/10">
+              <Shield className="w-4 h-4 text-purple-400" />
+              <span className="text-purple-200 text-sm font-medium">Hosted MCP access secured by Vaulter</span>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -69,78 +98,141 @@ export default async function AuthorizePage({ searchParams }) {
   const consentToken = issueAuthorizationConsent({ userId, params });
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-cyan-950 p-6 md:p-8 text-white">
-      <div className="max-w-3xl mx-auto">
-        <Card className="border-white/10 bg-white/5 backdrop-blur-xl p-8 md:p-10">
-          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-            <div>
-              <p className="text-sm uppercase tracking-[0.24em] text-cyan-300">Authorize MCP Client</p>
-              <h1 className="text-4xl font-bold mt-3 tracking-tight">Allow {client.client_name || 'this client'} to use Vaulter?</h1>
-              <p className="text-slate-300 mt-3 max-w-2xl">
-                This client is requesting browser-based MCP access. After you approve, it will receive an MCP token and reconnect automatically.
-              </p>
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-8 flex flex-col">
+      <div className="max-w-7xl mx-auto mb-8 w-full">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between mb-8">
+          <div>
+            <Link href="/" className="inline-flex items-center gap-2 text-purple-200 hover:text-white transition-colors mb-5">
+              <ArrowLeft className="w-4 h-4" />
+              Back to vault
+            </Link>
+            <div className="flex items-center gap-1 mb-2">
+              <Image
+                src="/assets/vaulter-logo.svg"
+                alt="Vaulter Logo"
+                width={90}
+                height={90}
+                className="vaulter-logo-spin"
+              />
+              <div>
+                <h1 className="text-5xl font-bold text-white tracking-tight">Authorize MCP</h1>
+                <p className="text-purple-200 text-lg font-medium mt-2">Browser sign-in for hosted Vaulter access.</p>
+              </div>
             </div>
-            <div className="rounded-2xl border border-emerald-400/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
-              Signed in as <span className="font-medium text-white">{user?.primaryEmailAddress?.emailAddress || user?.username || user?.id}</span>
-            </div>
+            <p className="text-purple-300 max-w-3xl">
+              {client.client_name || 'This client'} wants access to your hosted Vaulter MCP server. If you approve, the client receives an OAuth token and reconnects automatically without asking you for manual bearer credentials.
+            </p>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-3 mt-8">
-            <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-              <Bot className="w-5 h-5 text-cyan-300 mb-3" />
-              <p className="font-medium">Client</p>
-              <p className="text-sm text-slate-400 mt-1 break-all">{client.client_name || 'Unnamed MCP client'}</p>
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/5 backdrop-blur-sm rounded-full border border-white/10 self-start">
+            <Shield className="w-4 h-4 text-green-400" />
+            <span className="text-purple-100 text-sm font-medium">
+              Signed in as {user?.primaryEmailAddress?.emailAddress || user?.username || user?.id}
+            </span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <Card className="bg-white/10 backdrop-blur-lg border-white/20 p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-purple-200 text-sm">Client</p>
+                <p className="text-2xl font-bold text-white mt-1 break-words">{client.client_name || 'Unnamed'}</p>
+              </div>
+              <Bot className="w-12 h-12 text-purple-400" />
             </div>
-            <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-              <KeyRound className="w-5 h-5 text-indigo-300 mb-3" />
-              <p className="font-medium">Requested scope</p>
-              <p className="text-sm text-slate-400 mt-1">{params.scopes.join(', ')}</p>
+          </Card>
+
+          <Card className="bg-white/10 backdrop-blur-lg border-white/20 p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-purple-200 text-sm">Requested Scope</p>
+                <p className="text-2xl font-bold text-white mt-1">{params.scopes.join(', ')}</p>
+              </div>
+              <Key className="w-12 h-12 text-blue-400" />
             </div>
-            <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-              <Shield className="w-5 h-5 text-emerald-300 mb-3" />
-              <p className="font-medium">Resource</p>
-              <p className="text-sm text-slate-400 mt-1 break-all">{params.resource}</p>
+          </Card>
+
+          <Card className="bg-white/10 backdrop-blur-lg border-white/20 p-6">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-purple-200 text-sm">Resource</p>
+                <p className="text-base font-semibold text-white mt-1 break-all">{params.resource}</p>
+              </div>
+              <Shield className="w-12 h-12 text-green-400 shrink-0" />
+            </div>
+          </Card>
+        </div>
+
+        <Card className="bg-white/10 backdrop-blur-lg border-white/20 p-6 mb-8">
+          <h2 className="text-2xl font-semibold text-white mb-3">What this approval allows</h2>
+          <p className="text-purple-200 mb-5">
+            Vaulter keeps the same vault boundaries you already use in the dashboard. The client only gets access through explicit MCP tool calls.
+          </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="rounded-xl border border-white/10 bg-black/20 p-4">
+              <p className="text-white font-medium">Masked vault listing</p>
+              <p className="text-sm text-purple-200 mt-2">List your stored keys without exposing plaintext values by default.</p>
+            </div>
+            <div className="rounded-xl border border-white/10 bg-black/20 p-4">
+              <p className="text-white font-medium">Explicit secret access</p>
+              <p className="text-sm text-purple-200 mt-2">Decrypt secrets only when the client deliberately calls Vaulter MCP tools.</p>
+            </div>
+            <div className="rounded-xl border border-white/10 bg-black/20 p-4">
+              <p className="text-white font-medium">Vault management</p>
+              <p className="text-sm text-purple-200 mt-2">Add and remove vault entries on your behalf using the same hosted account.</p>
             </div>
           </div>
-
-          <div className="rounded-3xl border border-white/10 bg-black/25 p-5 mt-8">
-            <p className="text-sm uppercase tracking-[0.24em] text-slate-400">This access allows the client to</p>
-            <ul className="mt-4 space-y-2 text-slate-200">
-              <li>- List your vault entries with masked metadata</li>
-              <li>- Request decrypted secrets only when it explicitly calls Vaulter MCP tools</li>
-              <li>- Add and remove vault entries on your behalf</li>
-            </ul>
-          </div>
-
-          <form action="/api/oauth/authorize" method="post" className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-end">
-            {hiddenInput('client_id', params.clientId)}
-            {hiddenInput('redirect_uri', params.redirectUri)}
-            {hiddenInput('state', params.state)}
-            {hiddenInput('code_challenge', params.codeChallenge)}
-            {hiddenInput('code_challenge_method', params.codeChallengeMethod)}
-            {hiddenInput('scope', params.scopes.join(' '))}
-            {hiddenInput('resource', params.resource)}
-            {hiddenInput('consent_token', consentToken)}
-
-            <Button
-              type="submit"
-              name="decision"
-              value="deny"
-              variant="outline"
-              className="border-white/15 bg-white/5 text-slate-100 hover:bg-white/10"
-            >
-              Deny
-            </Button>
-            <Button
-              type="submit"
-              name="decision"
-              value="allow"
-              className="bg-gradient-to-r from-cyan-500 to-indigo-500 hover:from-cyan-400 hover:to-indigo-400 text-white"
-            >
-              Approve access
-            </Button>
-          </form>
         </Card>
+
+        <Card className="bg-white/10 backdrop-blur-lg border-white/20 p-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h2 className="text-2xl font-semibold text-white">Approve this client</h2>
+              <p className="text-purple-200 mt-2">Approve to continue the OAuth flow, or deny to send the client back without access.</p>
+            </div>
+
+            <form action="/api/oauth/authorize" method="post" className="flex flex-col gap-3 sm:flex-row sm:items-center">
+              {hiddenInput('client_id', params.clientId)}
+              {hiddenInput('redirect_uri', params.redirectUri)}
+              {hiddenInput('response_type', 'code')}
+              {hiddenInput('state', params.state)}
+              {hiddenInput('code_challenge', params.codeChallenge)}
+              {hiddenInput('code_challenge_method', params.codeChallengeMethod)}
+              {hiddenInput('scope', params.scopes.join(' '))}
+              {hiddenInput('resource', params.resource)}
+              {hiddenInput('consent_token', consentToken)}
+
+              <Button
+                type="submit"
+                name="decision"
+                value="deny"
+                variant="outline"
+                className="border-white/20 bg-white/5 text-white hover:bg-white/10"
+              >
+                Deny
+              </Button>
+              <Button
+                type="submit"
+                name="decision"
+                value="allow"
+                className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white"
+              >
+                Approve access
+              </Button>
+            </form>
+          </div>
+        </Card>
+      </div>
+
+      <div className="max-w-7xl mx-auto mt-auto pt-12 w-full">
+        <div className="text-center">
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/5 backdrop-blur-sm rounded-full border border-white/10">
+            <Shield className="w-4 h-4 text-purple-400" />
+            <span className="text-purple-200 text-sm font-medium">Hosted MCP access secured by Vaulter</span>
+          </div>
+        </div>
       </div>
     </div>
   );
