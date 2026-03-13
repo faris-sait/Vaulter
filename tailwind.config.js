@@ -16,8 +16,13 @@ module.exports = {
     			'2xl': '1400px'
     		}
     	},
-    	extend: {
-    		colors: {
+		extend: {
+			fontFamily: {
+				sans: ['var(--font-body)', 'sans-serif'],
+				display: ['var(--font-display)', 'sans-serif'],
+				mono: ['var(--font-mono)', 'monospace']
+			},
+			colors: {
     			border: 'hsl(var(--border))',
     			input: 'hsl(var(--input))',
     			ring: 'hsl(var(--ring))',

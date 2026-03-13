@@ -4,16 +4,17 @@
 
 body {
     margin: 0;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto",
-        "Oxygen", "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans",
-        "Helvetica Neue", sans-serif;
+    font-family: var(--font-body), -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
 }
 
+html {
+    scroll-behavior: smooth;
+}
+
 code {
-    font-family: source-code-pro, Menlo, Monaco, Consolas, "Courier New",
-        monospace;
+    font-family: var(--font-mono), Menlo, Monaco, Consolas, "Courier New", monospace;
 }
 
 .App {
@@ -151,6 +152,89 @@ code {
     }
   body {
     @apply bg-background text-foreground;
+    background: #050507;
+    color: #f5f3ff;
     }
+
+  h1, h2, h3, h4, h5, h6, .font-display {
+    font-family: var(--font-display), sans-serif;
+    letter-spacing: -0.04em;
+  }
+
+  code, pre, .font-mono {
+    font-family: var(--font-mono), monospace;
+  }
 }
 
+@layer utilities {
+  .vaulter-page {
+    @apply min-h-screen bg-black text-white;
+    background-image:
+      linear-gradient(rgba(168, 85, 247, 0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(168, 85, 247, 0.04) 1px, transparent 1px),
+      radial-gradient(circle at top, rgba(76, 29, 149, 0.16), transparent 30%),
+      linear-gradient(180deg, rgba(6, 6, 8, 1) 0%, rgba(3, 3, 5, 1) 100%);
+    background-size: auto, auto, auto, auto;
+    background-position: center top, center top, center top, center top;
+  }
+
+  .vaulter-section {
+    @apply py-16 md:py-20;
+  }
+
+  .vaulter-surface {
+    border: 1px solid rgba(168, 85, 247, 0.12);
+    background: rgba(6, 6, 9, 0.9);
+    border-radius: 1.75rem;
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.02), inset 0 1px 0 rgba(255,255,255,0.02);
+  }
+
+  .vaulter-subtle-surface {
+    border: 1px solid rgba(168, 85, 247, 0.1);
+    background: rgba(8, 8, 12, 0.84);
+    border-radius: 1.5rem;
+  }
+
+  .vaulter-kicker {
+    @apply font-mono text-[12px] uppercase tracking-[0.24em] text-purple-300;
+  }
+
+  .vaulter-copy {
+    @apply text-base leading-7 text-purple-200 md:text-lg;
+  }
+
+  .vaulter-display-xl {
+    @apply font-display text-5xl font-bold tracking-[-0.06em] text-white md:text-7xl;
+  }
+
+  .vaulter-display-lg {
+    @apply font-display text-4xl font-bold tracking-[-0.06em] text-white md:text-6xl;
+  }
+
+  .vaulter-grid-frame {
+    overflow: hidden;
+    border-radius: 1.75rem;
+    border: 1px solid rgba(168, 85, 247, 0.1);
+    background: rgba(8, 8, 12, 0.78);
+  }
+
+  .vaulter-grid-cell {
+    border-color: rgba(168, 85, 247, 0.08);
+    background: rgba(5, 5, 8, 0.92);
+  }
+
+  .vaulter-pill {
+    @apply inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm text-purple-200;
+    border: 1px solid rgba(168, 85, 247, 0.16);
+    background: rgba(168, 85, 247, 0.05);
+  }
+
+  .vaulter-hero-grid {
+    background-image:
+      linear-gradient(rgba(168, 85, 247, 0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(168, 85, 247, 0.04) 1px, transparent 1px);
+    background-size: 48px 48px;
+    mask-image: radial-gradient(ellipse 80% 70% at 50% 35%, black 30%, transparent 100%);
+    -webkit-mask-image: radial-gradient(ellipse 80% 70% at 50% 35%, black 30%, transparent 100%);
+  }
+}

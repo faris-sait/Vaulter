@@ -74,9 +74,9 @@ export default async function AuthorizePage({ searchParams }) {
               {errorMessage || 'Vaulter could not validate the incoming authorization request.'}
             </p>
             <Button asChild className="mt-6 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white">
-              <Link href="/">
+              <Link href="/dashboard">
                 <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to Vaulter
+                Back to Vault
               </Link>
             </Button>
           </Card>
@@ -102,9 +102,9 @@ export default async function AuthorizePage({ searchParams }) {
       <div className="max-w-7xl mx-auto mb-8 w-full">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between mb-8">
           <div>
-            <Link href="/" className="inline-flex items-center gap-2 text-purple-200 hover:text-white transition-colors mb-5">
+            <Link href="/dashboard" className="inline-flex items-center gap-2 text-purple-200 hover:text-white transition-colors mb-5">
               <ArrowLeft className="w-4 h-4" />
-              Back to vault
+              Back to Vault
             </Link>
             <div className="flex items-center gap-1 mb-2">
               <Image
@@ -167,7 +167,7 @@ export default async function AuthorizePage({ searchParams }) {
         <Card className="bg-white/10 backdrop-blur-lg border-white/20 p-6 mb-8">
           <h2 className="text-2xl font-semibold text-white mb-3">What this approval allows</h2>
           <p className="text-purple-200 mb-5">
-            Vaulter keeps the same vault boundaries you already use in the dashboard. The client only gets access through explicit MCP tool calls.
+            Vaulter keeps the same vault boundaries you already use in the vault. The client only gets access through explicit MCP tool calls.
           </p>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

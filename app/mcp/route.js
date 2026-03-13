@@ -91,7 +91,7 @@ function infoResponse(request) {
     endpoint: `${origin}/mcp`,
     auth: {
       primary: 'OAuth 2.1 with browser sign-in via Clerk',
-      fallback: 'Create a manual MCP token at /mcp-access',
+      fallback: 'See MCP setup instructions at /mcp-access',
     },
     discovery: {
       authorizationServer: `${origin}/.well-known/oauth-authorization-server`,
