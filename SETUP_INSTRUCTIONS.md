@@ -106,7 +106,7 @@ MCP_OAUTH_SECRET=YOUR_LONG_RANDOM_OAUTH_SECRET
 ## 🎨 Features
 
 - Glassmorphic UI with backdrop blur effects
-- Dashboard with real-time stats
+- Vault with real-time stats
 - Search and filter by name/tags
 - Copy to clipboard functionality
 - Usage tracking per key

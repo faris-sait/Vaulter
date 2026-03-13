@@ -8,7 +8,7 @@ Hosted remote endpoint:
 https://vaulter-nine.vercel.app/mcp
 ```
 
-The hosted endpoint now supports browser-based MCP OAuth for compatible clients. Manual bearer tokens created in `/mcp-access` are only needed as a fallback.
+The hosted endpoint now supports browser-based MCP OAuth for compatible clients. Setup instructions live at `/mcp-access`, while the actual hosted MCP server endpoint is `/mcp`.
 
 ## Prerequisites
 

@@ -27,7 +27,7 @@ Vaulter is a secure API key manager with a CLI and a web dashboard. Store, encry
   - [vaulter web-app](#vaulter-web-app)
 - [MCP Server](#mcp-server)
 - [Web App](#web-app)
-  - [Dashboard](#dashboard)
+  - [Vault](#vault)
   - [Key Management](#key-management)
   - [.env Upload](#env-upload)
   - [Authentication](#authentication)
@@ -284,7 +284,7 @@ Authentication:
   4. you sign in with Clerk and approve access
   5. the client receives an MCP access token and reconnects
 - Clients that do not support OAuth yet can still use `Authorization: Bearer <mcp-token>`.
-- Signed-in users can create dedicated fallback MCP tokens from `/mcp-access` in the web app.
+- MCP setup instructions live at `/mcp-access`, and the actual hosted MCP server endpoint is `/mcp`.
 - Sensitive MCP endpoints are rate-limited. For production at larger scale, use a shared rate-limit store instead of per-instance memory.
 - If you prefer a local stdio wrapper for development, there is also an optional package in `mcp/`.
 
@@ -319,7 +319,7 @@ OAuth discovery endpoints are also exposed at `/.well-known/oauth-authorization-
 
 The Vaulter web app is a full-featured dashboard for managing your encrypted keys. Access it at **[vaulter-nine.vercel.app](https://vaulter-nine.vercel.app)** or self-host it.
 
-### Dashboard
+### Vault
 
 The dashboard gives you an overview of your vault:
 
