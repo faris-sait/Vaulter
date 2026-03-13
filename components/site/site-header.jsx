@@ -14,10 +14,8 @@ export default function SiteHeader({ ctaHref = '/dashboard', ctaLabel = 'Open Va
   return (
     <header className="sticky top-0 z-40 border-b border-purple-500/10 bg-[rgba(4,4,6,0.92)] backdrop-blur-xl">
       <div className="mx-auto flex w-full max-w-[1160px] items-center justify-between gap-6 px-6 py-4 lg:px-8">
-        <Link href="/" className="flex items-center gap-2 text-white">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-purple-500/16 bg-purple-500/10">
-            <Image src="/assets/vaulter-logo.svg" alt="Vaulter Logo" width={30} height={30} className="vaulter-logo-spin" />
-          </div>
+        <Link href="/" className="flex items-center gap-4 text-white">
+          <Image src="/assets/vaulter-logo.svg" alt="Vaulter Logo" width={60} height={60} />
           <div>
             <p className="font-display text-[1.8rem] font-bold leading-none tracking-[-0.06em]">Vaulter</p>
           </div>
