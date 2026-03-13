@@ -58,7 +58,6 @@ export default async function AuthorizePage({ searchParams }) {
               alt="Vaulter Logo"
               width={100}
               height={100}
-              className="vaulter-logo-spin"
             />
             <div>
               <h1 className="text-5xl font-bold text-white tracking-tight">Vaulter</h1>
@@ -112,7 +111,6 @@ export default async function AuthorizePage({ searchParams }) {
                 alt="Vaulter Logo"
                 width={90}
                 height={90}
-                className="vaulter-logo-spin"
               />
               <div>
                 <h1 className="text-5xl font-bold text-white tracking-tight">Authorize MCP</h1>

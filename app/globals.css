@@ -56,22 +56,6 @@ code {
     }
 }
 
-@keyframes vaulter-tilt {
-    0%, 100% {
-        transform: perspective(400px) rotateY(-25deg);
-    }
-    50% {
-        transform: perspective(400px) rotateY(25deg);
-    }
-}
-
-.vaulter-logo-spin {
-    animation: vaulter-tilt 3s ease-in-out infinite;
-    transform-style: preserve-3d;
-}
-
-
-
 @layer base {
   :root {
         --background: 0 0% 100%;
