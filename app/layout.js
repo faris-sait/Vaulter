@@ -1,4 +1,5 @@
 import { ClerkProvider } from '@clerk/nextjs';
+import { Analytics } from '@vercel/analytics/react';
 import { Inter, Syne, Space_Mono } from 'next/font/google';
 import { Toaster } from '@/components/ui/toaster';
 import './globals.css';
@@ -69,6 +70,7 @@ export default function RootLayout({ children }) {
       <html lang="en">
         <body className={`${bodyFont.variable} ${displayFont.variable} ${monoFont.variable}`}>
           {children}
+          <Analytics />
           <Toaster />
         </body>
       </html>
