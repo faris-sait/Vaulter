@@ -49,7 +49,7 @@ export default function MpcAccessPage() {
         items: [
           { id: 'claude-code', name: 'Claude Code', command: `claude mcp add --transport http --scope user vaulter ${endpoint}`, icon: Terminal },
           { id: 'gemini-cli', name: 'Gemini CLI', command: `gemini mcp add --transport http vaulter ${endpoint}`, icon: Hexagon },
-          { id: 'codex-cli', name: 'Codex CLI', command: `codex mcp add --transport http vaulter ${endpoint}`, icon: FileCode },
+          { id: 'codex-cli', name: 'Codex CLI', command: 'codex mcp login vaulter', icon: FileCode },
           { id: 'opencode', name: 'OpenCode', command: opencodeCommand, icon: Sparkles },
           { id: 'copilot-cli', name: 'GitHub Copilot CLI', command: `gh copilot mcp add --transport http vaulter ${endpoint}`, icon: Command },
         ],
