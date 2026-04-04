@@ -6,7 +6,7 @@ import { redirect } from 'next/navigation';
 import { ArrowLeft, Bot, Key, Lock, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { issueAuthorizationConsent, parseAuthorizationRequest } from '../../lib/server/mcp-oauth.js';
+import { getOAuthClient, issueAuthorizationConsent, parseAuthorizationRequest } from '../../lib/server/mcp-oauth.js';
 
 function resolveOrigin(headerStore) {
   const host = headerStore.get('x-forwarded-host') || headerStore.get('host');
@@ -41,11 +41,35 @@ export default async function AuthorizePage({ searchParams }) {
   const origin = resolveOrigin(headerStore);
   let authorization;
   let errorMessage = '';
+  let errorDetails;
 
   try {
     authorization = parseAuthorizationRequest(searchParams, origin);
   } catch (error) {
     errorMessage = error.message;
+
+    try {
+      const clientId = typeof searchParams?.client_id === 'string' ? searchParams.client_id : '';
+      const requestedRedirectUri = typeof searchParams?.redirect_uri === 'string' ? searchParams.redirect_uri : '';
+      const client = clientId ? getOAuthClient(clientId) : undefined;
+
+      errorDetails = {
+        clientName: client?.client_name,
+        tokenEndpointAuthMethod: client?.token_endpoint_auth_method,
+        requestedRedirectUri,
+        registeredRedirectUris: client?.redirect_uris || [],
+      };
+
+      console.error('MCP OAuth authorization request failed', {
+        error: error.message,
+        clientName: client?.client_name,
+        tokenEndpointAuthMethod: client?.token_endpoint_auth_method,
+        requestedRedirectUri,
+        registeredRedirectUris: client?.redirect_uris || [],
+      });
+    } catch {
+      errorDetails = undefined;
+    }
   }
 
   if (!authorization) {
@@ -72,6 +96,44 @@ export default async function AuthorizePage({ searchParams }) {
             <p className="text-purple-300 mt-4">
               {errorMessage || 'Vaulter could not validate the incoming authorization request.'}
             </p>
+            {errorDetails ? (
+              <div className="mt-6 rounded-xl border border-white/10 bg-black/20 p-4 text-left">
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-purple-200">OAuth Debug</p>
+                {errorDetails.clientName ? (
+                  <p className="mt-3 text-sm text-purple-100">
+                    Client: <span className="font-medium text-white">{errorDetails.clientName}</span>
+                  </p>
+                ) : null}
+                {errorDetails.tokenEndpointAuthMethod ? (
+                  <p className="mt-2 text-sm text-purple-100">
+                    Auth method: <span className="font-medium text-white">{errorDetails.tokenEndpointAuthMethod}</span>
+                  </p>
+                ) : null}
+                {errorDetails.requestedRedirectUri ? (
+                  <div className="mt-3">
+                    <p className="text-xs uppercase tracking-[0.16em] text-purple-300">Requested redirect URI</p>
+                    <p className="mt-1 break-all rounded-lg bg-black/30 px-3 py-2 font-mono text-xs text-white">
+                      {errorDetails.requestedRedirectUri}
+                    </p>
+                  </div>
+                ) : null}
+                {errorDetails.registeredRedirectUris.length > 0 ? (
+                  <div className="mt-3">
+                    <p className="text-xs uppercase tracking-[0.16em] text-purple-300">Registered redirect URIs</p>
+                    <div className="mt-1 space-y-2">
+                      {errorDetails.registeredRedirectUris.map((uri) => (
+                        <p
+                          key={uri}
+                          className="break-all rounded-lg bg-black/30 px-3 py-2 font-mono text-xs text-white"
+                        >
+                          {uri}
+                        </p>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
             <Button asChild className="mt-6 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white">
               <Link href="/dashboard">
                 <ArrowLeft className="w-4 h-4 mr-2" />
