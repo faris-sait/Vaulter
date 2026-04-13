@@ -16,7 +16,7 @@ export async function DELETE(_request, { params }) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const limitResult = rateLimitByIdentifier(userId, MCP_TOKEN_REVOKE_LIMIT);
+    const limitResult = await rateLimitByIdentifier(userId, MCP_TOKEN_REVOKE_LIMIT);
     if (!limitResult.allowed) {
       return rateLimitErrorResponse(limitResult, { error: 'Too many token revoke requests' });
     }

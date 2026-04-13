@@ -21,7 +21,7 @@ function hasTrustedOrigin(request) {
 }
 
 export async function POST(request) {
-  const limitResult = rateLimitByIp(request, OAUTH_APPROVAL_RATE_LIMIT);
+  const limitResult = await rateLimitByIp(request, OAUTH_APPROVAL_RATE_LIMIT);
   if (!limitResult.allowed) {
     return rateLimitErrorResponse(limitResult, {
       error: 'rate_limited',

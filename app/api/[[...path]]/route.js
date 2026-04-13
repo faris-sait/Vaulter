@@ -23,7 +23,7 @@ async function GET(request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const limitResult = rateLimitByIdentifier(userId, API_GET_LIMIT);
+    const limitResult = await rateLimitByIdentifier(userId, API_GET_LIMIT);
     if (!limitResult.allowed) {
       return rateLimitErrorResponse(limitResult, { error: 'Too many read requests' });
     }
@@ -94,7 +94,7 @@ async function POST(request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const limitResult = rateLimitByIdentifier(userId, API_POST_LIMIT);
+    const limitResult = await rateLimitByIdentifier(userId, API_POST_LIMIT);
     if (!limitResult.allowed) {
       return rateLimitErrorResponse(limitResult, { error: 'Too many write requests' });
     }
@@ -282,7 +282,7 @@ async function DELETE(request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const limitResult = rateLimitByIdentifier(userId, API_DELETE_LIMIT);
+    const limitResult = await rateLimitByIdentifier(userId, API_DELETE_LIMIT);
     if (!limitResult.allowed) {
       return rateLimitErrorResponse(limitResult, { error: 'Too many delete requests' });
     }

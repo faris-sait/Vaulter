@@ -25,7 +25,7 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const limitResult = rateLimitByIdentifier(userId, MCP_TOKEN_LIST_LIMIT);
+    const limitResult = await rateLimitByIdentifier(userId, MCP_TOKEN_LIST_LIMIT);
     if (!limitResult.allowed) {
       return rateLimitErrorResponse(limitResult, { error: 'Too many token list requests' });
     }
@@ -49,7 +49,7 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const limitResult = rateLimitByIdentifier(userId, MCP_TOKEN_CREATE_LIMIT);
+    const limitResult = await rateLimitByIdentifier(userId, MCP_TOKEN_CREATE_LIMIT);
     if (!limitResult.allowed) {
       return rateLimitErrorResponse(limitResult, { error: 'Too many token creation requests' });
     }

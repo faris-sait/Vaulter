@@ -16,7 +16,7 @@ export async function POST() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const limitResult = rateLimitByIdentifier(userId, CLI_TOKEN_CREATE_LIMIT);
+    const limitResult = await rateLimitByIdentifier(userId, CLI_TOKEN_CREATE_LIMIT);
     if (!limitResult.allowed) {
       return rateLimitErrorResponse(limitResult, { error: 'Too many CLI token requests' });
     }

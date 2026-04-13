@@ -106,7 +106,7 @@ function infoResponse(request) {
 }
 
 async function handleTransportRequest(request) {
-  const limitResult = rateLimitByIp(request, MCP_RATE_LIMIT);
+  const limitResult = await rateLimitByIp(request, MCP_RATE_LIMIT);
   if (!limitResult.allowed) {
     return rateLimitErrorResponse(limitResult, {
       error: 'rate_limited',
